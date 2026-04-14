@@ -18,6 +18,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_UMLRjqofXoGaKKFZPAjxTw_-xij88Pb';
 
 // Supabase 表名映射（与本地数据键名对应）
 const SUPABASE_TABLES = {
+    users: 'cwm_users',       // 账号（新增，解决其他终端登录问题）
     projects: 'cwm_projects',
     staff: 'cwm_staff',
     attendance: 'cwm_attendance',
