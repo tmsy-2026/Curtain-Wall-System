@@ -7,80 +7,64 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4F46E5">
     
-    <!-- 腾讯云开发 SDK -->
-    <script src="https://imgcache.qq.com/qcloud/tcbjs/1.10.8/tcb.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- 云数据库配置（必须优先加载） -->
-    <script src="cloudbase-config.js"></script>
+    <!-- Supabase数据库配置 -->
+    <script src="supabase-config.js"></script>
     
     <!-- 云数据库同步模块 -->
     <script>
-    // 云数据库管理器
+    // Supabase 数据库管理器
     const CloudDB = {
-        app: null,
-        db: null,
+        client: null,
         initialized: false,
         syncing: false,
         lastSyncTime: null,
         
-        // 初始化云数据库
+        // 初始化 Supabase 客户端
         async init() {
-            if (!CLOUDBASE_CONFIG.enableCloud) {
-                console.log('【云同步】已禁用，使用本地存储模式');
-                return false;
-            }
-            
-            if (this.initialized) return true;
-            
             try {
-                console.log('【云同步】正在初始化腾讯云数据库...');
-                this.app = tcb.init({
-                    env: CLOUDBASE_CONFIG.env,
-                    region: CLOUDBASE_CONFIG.region
-                });
+                console.log('【云同步】正在初始化 Supabase...');
+                this.client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
-                // 匿名登录（无需注册，匿名访问云资源）
-                await this.app.auth({ persistence: 'local' });
-                const authState = await this.app.auth.getAuthState();
-                if (!authState) {
-                    await this.app.auth.signInAnonymously();
-                    console.log('【云同步】匿名登录成功');
-                } else {
-                    console.log('【云同步】已登录');
-                }
+                // 测试连接
+                const { data, error } = await this.client.from('cwm_projects').select('id').limit(1);
+                if (error) throw error;
                 
-                this.db = this.app.database();
                 this.initialized = true;
-                console.log('【云同步】腾讯云数据库初始化成功！');
+                console.log('【云同步】Supabase 连接成功！');
                 return true;
             } catch (e) {
-                console.error('【云同步】初始化失败，将使用本地存储:', e);
-                CLOUDBASE_CONFIG.enableCloud = false;
+                console.error('【云同步】初始化失败:', e);
                 return false;
             }
         },
         
-        // 获取集合引用
-        collection(name) {
-            if (!this.db) return null;
-            return this.db.collection(name);
+        // 获取表名
+        getTableName(key) {
+            return SUPABASE_TABLES[key] || key;
         },
         
         // 从云端下载数据到本地
         async pullData() {
-            if (!this.initialized || !this.db) return null;
+            if (!this.initialized || !this.client) return null;
             
             try {
                 console.log('【云同步】正在从云端拉取数据...');
                 const data = {};
-                const cols = CLOUDBASE_CONFIG.collections;
                 
-                // 依次获取各集合数据
-                for (const [key, colName] of Object.entries(cols)) {
+                // 依次获取各表数据
+                for (const key of Object.keys(SUPABASE_TABLES)) {
                     try {
-                        const res = await this.collection(colName).get();
-                        data[key] = res.data || [];
+                        const { data: rows, error } = await this.client
+                            .from(SUPABASE_TABLES[key])
+                            .select('*');
+                        
+                        if (error) throw error;
+                        data[key] = rows || [];
                     } catch(e) {
+                        console.log(`【云同步】获取 ${key} 失败:`, e);
                         data[key] = [];
                     }
                 }
@@ -98,40 +82,33 @@
         
         // 将本地数据推送到云端
         async pushData() {
-            if (!this.initialized || !this.db) return false;
+            if (!this.initialized || !this.client) return false;
             if (this.syncing) return false;
             
             this.syncing = true;
             try {
                 console.log('【云同步】正在上传本地数据到云端...');
                 const db = getDB();
-                const cols = CLOUDBASE_CONFIG.collections;
                 
-                for (const [key, colName] of Object.entries(cols)) {
-                    if (!db[key]) continue;
+                for (const [key, tableName] of Object.entries(SUPABASE_TABLES)) {
+                    if (!db[key] || db[key].length === 0) continue;
                     
-                    // 清空云端数据后重新写入
                     try {
-                        const existing = await this.collection(colName).get();
-                        // 删除旧数据
-                        for (const doc of existing.data) {
-                            try {
-                                await this.collection(colName).doc(doc._id).remove();
-                            } catch(e) {}
-                        }
-                        // 写入新数据
-                        for (const item of db[key]) {
-                            try {
-                                await this.collection(colName).add({ data: item });
-                            } catch(e) {}
-                        }
+                        // 清空旧数据
+                        await this.client.from(tableName).delete().neq('id', 0);
+                        
+                        // 批量插入新数据
+                        const { error } = await this.client
+                            .from(tableName)
+                            .insert(db[key].map(item => {
+                                // 移除 _id，改用 id
+                                const { _id, ...rest } = item;
+                                return { ...rest };
+                            }));
+                        
+                        if (error) console.log(`【云同步】上传 ${key} 部分失败:`, error);
                     } catch(e) {
-                        // 集合可能不存在，直接写入
-                        for (const item of db[key]) {
-                            try {
-                                await this.collection(colName).add({ data: item });
-                            } catch(e2) {}
-                        }
+                        console.log(`【云同步】上传 ${key} 失败:`, e);
                     }
                 }
                 
@@ -146,30 +123,8 @@
             }
         },
         
-        // 监听数据变化（实时同步）
-        async watchChanges(callback) {
-            if (!this.initialized || !this.db) return;
-            
-            // 监听 approvals 集合变化（审批数据最关键）
-            const approvalCol = this.collection(CLOUDBASE_CONFIG.collections.approvals);
-            if (approvalCol) {
-                approvalCol.watch({
-                    onChange: (snapshot) => {
-                        console.log('【云同步】检测到云端数据变化，自动拉取...');
-                        this.pullData().then(data => {
-                            if (callback) callback(data);
-                        });
-                    },
-                    onError: (e) => {
-                        console.error('【云同步】监听失败:', e);
-                    }
-                });
-            }
-        },
-        
         // 显示同步状态
         getStatus() {
-            if (!CLOUDBASE_CONFIG.enableCloud) return '本地模式';
             if (!this.initialized) return '未连接';
             if (this.syncing) return '同步中...';
             if (this.lastSyncTime) {
