@@ -1,0 +1,26 @@
+{
+  "name": "幕墙工程管理系统",
+  "short_name": "CWMS",
+  "description": "幕墙工程施工项目协同管理平台",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%232563eb' width='192' height='192' rx='32'/><path fill='white' d='M48 144V48h32v16h-16v16h16v16h-16v16h16v32H48zm48-48v64h32V96H96zm16-16v16h16V80h-16z'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%232563eb' width='512' height='512' rx='64'/><path fill='white' d='M128 384V128h96v48h-48v48h48v48h-48v48h48v64H128zm128-128v160h96V256H256zm48-48v48h48V208H304z'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "zh-CN",
+  "scope": "/",
+  "prefer_related_applications": false
+}
