@@ -1,0 +1,11 @@
+# 忽略工作助手内部文件
+.workbuddy/
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+*.swp
+*.swo
