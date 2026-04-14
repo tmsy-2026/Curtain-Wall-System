@@ -437,6 +437,8 @@ body {
     overflow-y: auto;
     z-index: 90;
     transition: transform var(--transition-normal);
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar-nav {

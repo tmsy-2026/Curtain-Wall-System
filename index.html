@@ -729,8 +729,15 @@
                 </div>
                 <button type="submit" class="btn btn-primary">登 录</button>
             </form>
+            <div style="margin-top:20px;padding-top:15px;border-top:1px solid #eee;text-align:center;">
+                <button type="button" onclick="document.getElementById('importFileInput').click()" style="background:#fff;color:#3498db;border:1px solid #3498db;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;">
+                    📥 导入数据 / 同步
+                </button>
+            </div>
         </div>
     </div>
+    <!-- 隐藏的文件导入输入框 -->
+    <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importAllData(this.files[0])">
     
     <!-- 主应用 -->
     <div class="main-app" id="mainApp">
@@ -2525,6 +2532,7 @@
     function renderSidebar() {
         var permissions = ROLE_PERMISSIONS[currentUser.role] || [];
         var sidebar = document.getElementById('sidebar');
+        var pending = [];  // 统一作用域，供桌面和移动端导航共用
         
         var menuConfig = [
             { id: 'dashboard', icon: '📊', title: '工作台', roles: ['all'] },
@@ -2556,7 +2564,7 @@
             if (item.id === 'approval') {
                 var db = getDB();
                 // 根据当前角色计算待审批数量（与loadApprovals逻辑一致）
-                var pending = [];
+                pending = [];
                 var role = currentUser.role;
                 
                 if (role === 'project_manager') {
@@ -2593,7 +2601,18 @@
                     '<span>' + item.icon + '</span><span>' + item.title + '</span>' + badge + '</button>';
         });
         
-        sidebar.innerHTML = html;
+        // 将菜单包裹在可滚动区域，同步按钮固定在底部
+        var navWrapper = document.createElement('div');
+        navWrapper.style.cssText = 'flex:1;overflow-y:auto;display:flex;flex-direction:column;';
+        navWrapper.innerHTML = html;
+        sidebar.innerHTML = '';
+        sidebar.appendChild(navWrapper);
+        
+        // 同步按钮固定在底部
+        var syncDiv = document.createElement('div');
+        syncDiv.style.cssText = 'padding:12px 16px;border-top:1px solid rgba(255,255,255,0.1);flex-shrink:0;';
+        syncDiv.innerHTML = '<button onclick="showSyncModal()" style="width:100%;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;">🔄 数据同步</button>';
+        sidebar.appendChild(syncDiv);
         
         // 移动端底部导航
         var mobileNav = document.getElementById('mobileNav');
@@ -5702,7 +5721,15 @@ function switchToProject(projectId) {
         var savedUser = sessionStorage.getItem('cwm_user');
         if (savedUser) {
             currentUser = JSON.parse(savedUser);
+            // 修复：刷新页面时从 localStorage 恢复 currentProject
+            var savedProject = localStorage.getItem('cwm_current_project');
+            if (savedProject) {
+                currentProject = savedProject;
+            }
             showMainApp();
+        } else {
+            // 无账号登录时，检查是否有数据可导入
+            checkDataImport();
         }
         
         // 设置日期默认值
@@ -5713,6 +5740,82 @@ function switchToProject(projectId) {
         document.getElementById('wageMonth').value = new Date().toISOString().slice(0, 7);
         document.getElementById('attMonthFilter').value = new Date().toISOString().slice(0, 7);
     };
+
+    // ==================== 数据导入导出（跨设备同步）====================
+    function checkDataImport() {
+        // 如果本地数据库为空，提示导入数据
+        var existingData = localStorage.getItem(DB_KEY);
+        if (!existingData || existingData === '{}' || existingData === 'null') {
+            var importPrompt = localStorage.getItem('cwm_import_prompted');
+            if (!importPrompt) {
+                localStorage.setItem('cwm_import_prompted', 'true');
+                setTimeout(function() {
+                    var answer = confirm('检测到当前设备数据为空。\n\n如果您在其他设备（电脑/手机）上使用过本系统，\n请点击"确定"导入其他设备的数据，实现数据同步。\n\n（请在弹出窗口中选择您之前导出的备份文件）');
+                    if (answer) {
+                        document.getElementById('importFileInput').click();
+                    }
+                }, 500);
+            }
+        }
+    }
+
+    function exportAllData() {
+        var data = localStorage.getItem(DB_KEY);
+        if (!data || data === '{}' || data === 'null') {
+            alert('暂无数据可导出！');
+            return;
+        }
+        var blob = new Blob([data], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'CWM数据备份_' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        alert('数据导出成功！\n文件名为：CWM数据备份_xxxx-xx-xx.json\n\n将此文件发送到其他设备即可实现数据同步。');
+    }
+
+    function importAllData(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var importedData = JSON.parse(e.target.result);
+                // 验证数据格式
+                if (!importedData.projectData) {
+                    alert('数据格式不正确，无法导入！');
+                    return;
+                }
+                var currentData = localStorage.getItem(DB_KEY);
+                if (currentData && currentData !== '{}' && currentData !== 'null') {
+                    var answer = confirm('当前设备已有数据。\n\n点击"确定"：合并数据（新数据覆盖旧数据）\n点击"取消"：保留当前数据，放弃导入');
+                    if (!answer) return;
+                }
+                localStorage.setItem(DB_KEY, JSON.stringify(importedData));
+                alert('数据导入成功！\n请重新登录或刷新页面以加载新数据。');
+                location.reload();
+            } catch (err) {
+                alert('导入失败：文件格式错误！');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function showSyncModal() {
+        var modal = document.createElement('div');
+        modal.id = 'syncModal';
+        modal.className = 'modal';
+        modal.style.cssText = 'display:block;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;';
+        modal.innerHTML = '<div style="background:#fff;border-radius:12px;padding:30px;max-width:400px;width:90%;text-align:center;">' +
+            '<h3 style="margin-top:0;">📱 数据同步</h3>' +
+            '<p style="color:#666;line-height:1.8;">当前设备数据可能与其他设备不同步。<br>请使用以下方式同步数据：</p>' +
+            '<div style="display:flex;flex-direction:column;gap:12px;margin-top:20px;">' +
+            '<button onclick="document.getElementById(\'importFileInput\').click();document.getElementById(\'syncModal\').remove();" style="background:#3498db;color:#fff;border:none;padding:12px;border-radius:8px;cursor:pointer;font-size:15px;">📥 导入其他设备的数据</button>' +
+            '<button onclick="exportAllData();document.getElementById(\'syncModal\').remove();" style="background:#2ecc71;color:#fff;border:none;padding:12px;border-radius:8px;cursor:pointer;font-size:15px;">📤 导出当前设备数据</button>' +
+            '<button onclick="document.getElementById(\'syncModal\').remove();" style="background:#eee;color:#666;border:none;padding:10px;border-radius:8px;cursor:pointer;font-size:14px;">暂不同步</button>' +
+            '</div></div>';
+        document.body.appendChild(modal);
+    }
     </script>
 </body>
 </html>
