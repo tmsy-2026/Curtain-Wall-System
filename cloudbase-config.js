@@ -18,7 +18,8 @@ const CLOUDBASE_CONFIG = {
     region: 'ap-shanghai',                                 // 地域
 
     // 是否启用云开发（true=云端同步，false=本地存储）
-    enableCloud: true,
+    // ⚠️ 注意：GitHub Pages 无法直接连接腾讯云，已临时禁用
+    enableCloud: false,
 
     // 云数据库集合名称
     collections: {
