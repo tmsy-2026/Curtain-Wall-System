@@ -1254,12 +1254,21 @@ tr:last-child td {
     }
 }
 
-/* 移动端 */
+/* ========================================
+   移动端全面优化
+   ======================================== */
+
+/* 移动端基础设置 */
 @media (max-width: 768px) {
     :root {
         --topnav-height: 56px;
     }
 
+    body {
+        font-size: 15px;
+    }
+
+    /* 顶部导航优化 */
     .menu-toggle {
         display: flex;
     }
@@ -1270,11 +1279,17 @@ tr:last-child td {
 
     .page-title {
         font-size: 1rem;
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
+    /* 侧边栏：滑出式 */
     .sidebar {
         transform: translateX(-100%);
-        width: var(--sidebar-width);
+        width: 280px;
+        z-index: 200;
     }
 
     .sidebar.open {
@@ -1282,83 +1297,340 @@ tr:last-child td {
     }
 
     .sidebar .nav-item span,
-    .sidebar .nav-section-title,
-    .sidebar .badge {
+    .sidebar .nav-section-title {
         display: inline;
     }
 
     .sidebar .nav-item {
         justify-content: flex-start;
-        padding: 12px 20px;
+        padding: 14px 20px;
     }
 
+    .sidebar .nav-item svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    /* 遮罩层 */
+    .sidebar-overlay {
+        display: block;
+        position: fixed;
+        top: var(--topnav-height);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 199;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s;
+    }
+
+    .sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* 主内容区 */
     .main-content {
         margin-left: 0;
         padding: 16px;
+        padding-bottom: 90px; /* 为底部导航留空 */
     }
 
+    /* 统计卡片 */
     .stats-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
     }
 
+    .stat-card {
+        padding: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .stat-info .value {
+        font-size: 1.25rem;
+    }
+
+    /* 快捷操作 */
     .quick-actions {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
     }
 
-    .notification-panel {
+    .quick-action {
+        flex-direction: column;
+        padding: 12px 8px;
+        gap: 6px;
+        text-align: center;
+    }
+
+    .quick-action svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .quick-action span {
+        font-size: 0.75rem;
+    }
+
+    /* 卡片优化 */
+    .card {
+        padding: 16px;
+        border-radius: var(--radius-md);
+        margin-bottom: 12px;
+    }
+
+    .card-header {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+    }
+
+    .card-header h3 {
+        font-size: 1rem;
+    }
+
+    /* 表单优化 */
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 14px 16px;
+        font-size: 16px; /* 防止iOS自动缩放 */
+    }
+
+    /* 按钮优化 */
+    .btn {
+        padding: 14px 20px;
+        font-size: 0.938rem;
         width: 100%;
     }
 
-    .modal {
-        max-width: 100%;
-        max-height: 100%;
-        border-radius: 0;
+    .btn-sm {
+        padding: 10px 16px;
+        font-size: 0.875rem;
     }
 
-    .form-row {
-        grid-template-columns: 1fr;
+    .form-actions {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* 搜索栏 */
+    .search-bar {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .search-bar input {
+        min-width: auto;
+        width: 100%;
     }
 
     .page-header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 12px;
     }
 
     .page-header .actions {
         width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
     }
 
     .page-header .actions .btn {
         flex: 1;
+        min-width: 100px;
     }
 
+    /* ===== 表格改为卡片式列表 ===== */
     .table-container {
-        margin: 0 -16px;
-        border-left: none;
-        border-right: none;
-        border-radius: 0;
+        border: none;
+        overflow: visible;
     }
 
-    .table-container table {
+    .table-container table,
+    .table-container thead,
+    .table-container tbody,
+    .table-container th,
+    .table-container td,
+    .table-container tr {
+        display: block;
+        width: 100%;
+    }
+
+    .table-container thead {
+        display: none; /* 隐藏表头 */
+    }
+
+    .table-container tbody tr {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        position: relative;
+    }
+
+    .table-container tbody tr:hover {
+        border-color: var(--primary);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .table-container tbody td {
+        padding: 4px 0;
+        padding-left: 35%;
+        position: relative;
+        text-align: left;
+        border: none;
+        min-height: auto;
+    }
+
+    .table-container tbody td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0;
+        font-weight: 600;
+        color: var(--text-secondary);
         font-size: 0.813rem;
     }
 
-    th, td {
-        padding: 10px 12px;
+    /* 表格内的按钮 */
+    .table-container td:last-child {
+        padding-left: 0;
+        margin-top: 8px;
+        display: flex;
+        gap: 6px;
+        justify-content: flex-end;
     }
 
+    /* 状态标签在卡片模式下 */
+    .table-container td .tag,
+    .table-container td .status-tag {
+        display: inline-flex;
+        font-size: 0.75rem;
+    }
+
+    /* 通知面板全屏 */
+    .notification-panel {
+        width: 100%;
+        top: var(--topnav-height);
+    }
+
+    /* 模态框全屏 */
+    .modal {
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        max-height: 100vh;
+    }
+
+    .modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .modal-overlay.active .modal {
+        transform: none;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        max-height: 90vh;
+    }
+
+    /* Toast 提示 */
     .toast-container {
-        left: 16px;
-        right: 16px;
-        bottom: 16px;
+        left: 12px;
+        right: 12px;
+        bottom: 90px;
     }
 
     .toast {
         min-width: auto;
+        width: 100%;
     }
 
+    /* ===== 底部快捷导航栏 ===== */
+    .bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: var(--bg-secondary);
+        border-top: 1px solid var(--border-color);
+        z-index: 100;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
+    }
+
+    .bottom-nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: var(--text-muted);
+        font-size: 0.688rem;
+        text-decoration: none;
+        transition: color 0.2s;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .bottom-nav-item svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .bottom-nav-item.active {
+        color: var(--primary);
+    }
+
+    .bottom-nav-item .badge {
+        position: absolute;
+        top: 4px;
+        right: calc(50% - 18px);
+        min-width: 16px;
+        height: 16px;
+        padding: 0 4px;
+        font-size: 0.625rem;
+        font-weight: 700;
+        color: white;
+        background: var(--danger);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* 登录页面 */
     .login-container {
         padding: 24px 16px;
+        min-height: auto;
+        justify-content: flex-start;
+        padding-top: 40px;
+    }
+
+    .login-header {
+        margin-bottom: 32px;
     }
 
     .login-header h1 {
@@ -1367,6 +1639,74 @@ tr:last-child td {
 
     .login-form {
         padding: 24px;
+    }
+
+    .login-hint {
+        margin-top: 20px;
+    }
+
+    .login-hint p {
+        font-size: 0.75rem;
+        padding: 10px 14px;
+    }
+
+    /* 考勤Tab优化 */
+    #tab-attendance .card {
+        padding: 16px 12px;
+    }
+
+    #tab-attendance > div:first-child {
+        padding: 12px;
+    }
+
+    /* 仪表盘欢迎区 */
+    .dashboard-welcome h2 {
+        font-size: 1.25rem;
+    }
+
+    /* Tab 按钮横向滚动 */
+    .tab-buttons {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .tab-buttons::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* 超小屏幕（360px以下） */
+@media (max-width: 360px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .stat-info .value {
+        font-size: 1.125rem;
+    }
+
+    .bottom-nav-item {
+        font-size: 0.625rem;
+    }
+}
+
+/* 横屏优化 */
+@media (max-width: 768px) and (orientation: landscape) {
+    .main-content {
+        padding-bottom: 70px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .modal-overlay.active .modal {
+        max-height: 80vh;
     }
 }
 

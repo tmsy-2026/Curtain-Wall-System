@@ -63,3 +63,7 @@
 - 对输出质量要求高，需要端到端解决方案
 - 偏好腾讯云方案（稳定、国内访问快）
 - 需要详细的操作指导（技术小白）
+
+## GitHub 仓库信息
+- 仓库地址：https://github.com/tmsy-2026/Curtain-Wall-System
+- GitHub Pages：https://tmsy-2026.github.io/Curtain-Wall-System/

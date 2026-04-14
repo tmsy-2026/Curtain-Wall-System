@@ -757,6 +757,9 @@
         </div>
         
         <div class="app-content">
+            <!-- 侧边栏遮罩层（移动端） -->
+            <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+            
             <!-- 侧边栏 -->
             <div class="sidebar" id="sidebar">
                 <!-- 动态生成的菜单 -->
@@ -2592,28 +2595,55 @@
         
         sidebar.innerHTML = html;
         
-        // 移动端导航
+        // 移动端底部导航
         var mobileNav = document.getElementById('mobileNav');
         var mobileHtml = '';
-        menuConfig.slice(0, 6).forEach(function(item) {
+        menuConfig.slice(0, 5).forEach(function(item) {
             if (item.roles[0] !== 'all' && !item.roles.includes(currentUser.role)) return;
-            mobileHtml += '<button class="nav-item" data-page="' + item.id + '" onclick="navigateTo(\'' + item.id + '\')">' +
-                         '<span>' + item.icon + '</span><span>' + item.title + '</span></button>';
+            var badge = '';
+            if (item.id === 'approval' && pending.length > 0) {
+                badge = '<span class="badge badge-warning" style="position:absolute;top:2px;right:calc(50% - 16px);min-width:16px;height:16px;padding:0 4px;font-size:10px;font-weight:700;color:white;background:var(--danger);border-radius:8px;display:flex;align-items:center;justify-content:center;">' + pending.length + '</span>';
+            }
+            mobileHtml += '<button class="bottom-nav-item" data-page="' + item.id + '" onclick="navigateTo(\'' + item.id + '\', this)">' +
+                         item.icon + '<span>' + item.title + '</span>' + badge + '</button>';
         });
         mobileNav.innerHTML = mobileHtml;
+        
+        // 更新底部导航高亮
+        var currentPage = localStorage.getItem('cwm_current_page') || 'dashboard';
+        document.querySelectorAll('.bottom-nav-item').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.page === currentPage);
+        });
     }
     
-    function navigateTo(pageId) {
+    function navigateTo(pageId, btn) {
         document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
         document.getElementById('page-' + pageId).classList.add('active');
         
-        document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
-        var activeNav = document.querySelector('.nav-item[data-page="' + pageId + '"]');
+        // 更新侧边栏高亮
+        document.querySelectorAll('.sidebar .nav-item').forEach(function(n) { n.classList.remove('active'); });
+        var activeNav = document.querySelector('.sidebar .nav-item[data-page="' + pageId + '"]');
         if (activeNav) activeNav.classList.add('active');
+        
+        // 更新底部导航高亮
+        document.querySelectorAll('.bottom-nav-item').forEach(function(n) { n.classList.remove('active'); });
+        var activeBottom = document.querySelector('.bottom-nav-item[data-page="' + pageId + '"]');
+        if (activeBottom) activeBottom.classList.add('active');
+        
+        // 移动端关闭侧边栏
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebarOverlay').classList.remove('active');
         
         loadPage(pageId);
     }
     
+    function toggleSidebar() {
+        var sidebar = document.getElementById('sidebar');
+        var overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('active');
+    }
+
     function loadPage(pageId) {
         // 保存当前页面
         localStorage.setItem('cwm_current_page', pageId);
@@ -2784,11 +2814,11 @@
         var db = getDB();
         var html = '';
         db.materials.forEach(function(m) {
-            html += '<tr><td>' + (m.category || '-') + '</td><td>' + (m.subCategory || '-') + '</td><td>' + m.name + '</td><td>' + m.spec + '</td><td>' + m.unit + '</td><td>¥' + m.price + '</td>' +
-                   '<td>' + (m.currentStock || 0) + '</td>' +
+            html += '<tr><td data-label="大类">' + (m.category || '-') + '</td><td data-label="小类">' + (m.subCategory || '-') + '</td><td data-label="名称">' + m.name + '</td><td data-label="规格">' + m.spec + '</td><td data-label="单位">' + m.unit + '</td><td data-label="单价">¥' + m.price + '</td>' +
+                   '<td data-label="库存">' + (m.currentStock || 0) + '</td>' +
                    '<td><button class="action-btn delete" onclick="deleteMaterial(\'' + m.id + '\')">删除</button></td></tr>';
         });
-        if (!html) html = '<tr><td colspan="8" style="text-align:center;color:#999">暂无材料，请添加</td></tr>';
+        if (!html) html = '<tr><td data-label="" colspan="8" style="text-align:center;color:#999">暂无材料，请添加</td></tr>';
         document.getElementById('materialsTable').innerHTML = html;
     }
     
@@ -2848,10 +2878,10 @@
         var html = '';
         db.inbound.forEach(function(r) {
             var mat = db.materials.find(function(m) { return m.id === r.materialId; });
-            html += '<tr><td>' + r.date + '</td><td>' + (mat ? (mat.category || '') + '>' + (mat.subCategory || '') : '-') + '</td><td>' + (mat ? mat.name : '-') + '</td><td>' + r.qty + '</td>' +
-                   '<td>' + r.supplier + '</td><td>' + r.operator + '</td></tr>';
+            html += '<tr><td data-label="日期">' + r.date + '</td><td data-label="分类">' + (mat ? (mat.category || '') + '>' + (mat.subCategory || '') : '-') + '</td><td data-label="材料">' + (mat ? mat.name : '-') + '</td><td data-label="数量">' + r.qty + '</td>' +
+                   '<td data-label="供应商">' + r.supplier + '</td><td data-label="操作人">' + r.operator + '</td></tr>';
         });
-        if (!html) html = '<tr><td colspan="6" style="text-align:center;color:#999">暂无入库记录</td></tr>';
+        if (!html) html = '<tr><td data-label="" colspan="6" style="text-align:center;color:#999">暂无入库记录</td></tr>';
         document.getElementById('inboundTable').innerHTML = html;
     }
     
@@ -2899,10 +2929,10 @@
         var html = '';
         db.outbound.forEach(function(r) {
             var mat = db.materials.find(function(m) { return m.id === r.materialId; });
-            html += '<tr><td>' + r.date + '</td><td>' + (mat ? mat.name : '-') + '</td><td>' + r.qty + '</td>' +
-                   '<td>' + r.project + '</td><td>' + r.receiver + '</td></tr>';
+            html += '<tr><td data-label="日期">' + r.date + '</td><td data-label="材料">' + (mat ? mat.name : '-') + '</td><td data-label="数量">' + r.qty + '</td>' +
+                   '<td data-label="用途">' + r.project + '</td><td data-label="领用人">' + r.receiver + '</td></tr>';
         });
-        if (!html) html = '<tr><td colspan="5" style="text-align:center;color:#999">暂无出库记录</td></tr>';
+        if (!html) html = '<tr><td data-label="" colspan="5" style="text-align:center;color:#999">暂无出库记录</td></tr>';
         document.getElementById('outboundTable').innerHTML = html;
     }
     
@@ -3013,13 +3043,13 @@
         var html = '';
         projectStaff.forEach(function(s) {
             var status = s.status === 1 ? '<span class="tag tag-approved">在职</span>' : '<span class="tag tag-rejected">离职</span>';
-            html += '<tr><td>' + s.name + '</td><td>' + s.workType + '</td><td>' + s.team + '</td>' +
-                   '<td>' + s.phone + '</td><td>' + s.joinDate + '</td><td>' + status + '</td>' +
-                   '<td>' + (s.creator || '-') + '</td>' +
+            html += '<tr><td data-label="姓名">' + s.name + '</td><td data-label="工种">' + s.workType + '</td><td data-label="班组">' + s.team + '</td>' +
+                   '<td data-label="电话">' + s.phone + '</td><td data-label="入职">' + s.joinDate + '</td><td data-label="状态">' + status + '</td>' +
+                   '<td data-label="经办人">' + (s.creator || '-') + '</td>' +
                    '<td><button class="action-btn edit" onclick="toggleStaffStatus(\'' + s.id + '\')">转' + (s.status === 1 ? '离职' : '在职') + '</button> ' +
                    '<button class="action-btn delete" onclick="deleteStaff(\'' + s.id + '\')">删除</button></td></tr>';
         });
-        if (!html) html = '<tr><td colspan="8" style="text-align:center;color:#999">暂无人员，请添加</td></tr>';
+        if (!html) html = '<tr><td data-label="" colspan="8" style="text-align:center;color:#999">暂无人员，请添加</td></tr>';
         document.getElementById('staffTable').innerHTML = html;
     }
     
@@ -3084,13 +3114,13 @@
             var staff = db.staff.find(function(s) { return s.id === w.staffId; });
             var typeName = {day: '日工资', piece: '计件工资', monthly: '月薪'}[w.type] || w.type;
             var statusName = w.paid ? '<span class="tag tag-approved">已付</span>' : '<span class="tag tag-pending">未付</span>';
-            html += '<tr><td>' + w.month + '</td><td>' + (staff ? staff.name : '-') + '</td><td>' + typeName + '</td>' +
-                   '<td>' + (w.days || '-') + '天</td><td>¥' + (w.price || 0) + '</td><td>¥' + (w.amount || 0) + '</td>' +
-                   '<td>' + statusName + '</td>' +
+            html += '<tr><td data-label="月份">' + w.month + '</td><td data-label="姓名">' + (staff ? staff.name : '-') + '</td><td data-label="类型">' + typeName + '</td>' +
+                   '<td data-label="天数">' + (w.days || '-') + '天</td><td data-label="单价">¥' + (w.price || 0) + '</td><td data-label="金额">¥' + (w.amount || 0) + '</td>' +
+                   '<td data-label="状态">' + statusName + '</td>' +
                    '<td><button class="action-btn edit" onclick="markWagePaid(\'' + w.id + '\')" ' + (w.paid ? 'disabled' : '') + '>确认付款</button> ' +
                    '<button class="action-btn delete" onclick="deleteWage(\'' + w.id + '\')">删除</button></td></tr>';
         });
-        if (!html) html = '<tr><td colspan="8" style="text-align:center;color:#999">暂无工资记录</td></tr>';
+        if (!html) html = '<tr><td data-label="" colspan="8" style="text-align:center;color:#999">暂无工资记录</td></tr>';
         document.getElementById('wagesTable').innerHTML = html;
     }
     
@@ -3225,13 +3255,13 @@
             var staff = db.staff.find(function(s) { return s.id === a.staffId; });
             var statusMap = { present: '<span class="tag tag-approved">出勤</span>', absent: '<span class="tag tag-rejected">缺勤</span>', leave: '<span class="tag tag-pending">请假</span>', overtime: '<span class="tag" style="background:#fff3cd;color:#856404">加班</span>' };
             var workStatus = statusMap[a.status] || ('<span class="tag">' + a.status + '</span>');
-            detailHtml += '<tr><td>' + a.date + '</td><td>' + (staff ? staff.name : '-') + '</td>' +
-                          '<td>' + (staff ? staff.workType : '-') + '</td><td>' + workStatus + '</td>' +
-                          '<td>' + (a.remark || '-') + '</td>' +
-                          '<td>' + (a.creator || '-') + '</td>' +
+            detailHtml += '<tr><td data-label="日期">' + a.date + '</td><td data-label="姓名">' + (staff ? staff.name : '-') + '</td>' +
+                          '<td data-label="工种">' + (staff ? staff.workType : '-') + '</td><td data-label="状态">' + workStatus + '</td>' +
+                          '<td data-label="备注">' + (a.remark || '-') + '</td>' +
+                          '<td data-label="经办人">' + (a.creator || '-') + '</td>' +
                           '<td><button class="action-btn delete" onclick="deleteAttendance(\'' + a.id + '\')">删除</button></td></tr>';
         });
-        if (!detailHtml) detailHtml = '<tr><td colspan="7" style="text-align:center;color:#999">本月暂无考勤记录</td></tr>';
+        if (!detailHtml) detailHtml = '<tr><td data-label="" colspan="7" style="text-align:center;color:#999">本月暂无考勤记录</td></tr>';
         var detailEl = document.getElementById('attendanceDetailTable');
         if (detailEl) detailEl.innerHTML = detailHtml;
 
@@ -4615,10 +4645,10 @@
         contracts.forEach(function(c) {
             var statusClass = { pending: 'tag-pending', approved: 'tag-approved', rejected: 'tag-rejected' }[c.status] || '';
             var statusName = { pending: '待审批', approved: '已通过', rejected: '已驳回' }[c.status] || c.status;
-            html += '<tr><td>' + c.contractNo + '</td><td>' + c.name + '</td><td>' + c.supplier + '</td><td>¥' + formatNumber(c.amount) + '</td>' +
-                   '<td>' + c.paymentMethod + '</td><td>' + (c.paymentTerm || '-') + '</td>' +
-                   '<td><span class="tag ' + statusClass + '">' + statusName + '</span></td>' +
-                   '<td>' + (c.creator || c.applicant || '-') + '</td>' +
+            html += '<tr><td data-label="合同号">' + c.contractNo + '</td><td data-label="合同名">' + c.name + '</td><td data-label="供应商">' + c.supplier + '</td><td data-label="金额">¥' + formatNumber(c.amount) + '</td>' +
+                   '<td data-label="付款方式">' + c.paymentMethod + '</td><td data-label="付款条件">' + (c.paymentTerm || '-') + '</td>' +
+                   '<td data-label="状态"><span class="tag ' + statusClass + '">' + statusName + '</span></td>' +
+                   '<td data-label="经办人">' + (c.creator || c.applicant || '-') + '</td>' +
                    '<td><button class="action-btn view" onclick="viewContract(\'' + c.id + '\')">详情</button></td></tr>';
         });
         if (!html) html = '<tr><td colspan="9" style="text-align:center;color:#999">暂无合同</td></tr>';
