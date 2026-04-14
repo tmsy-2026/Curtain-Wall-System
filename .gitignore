@@ -1,11 +1,22 @@
-# 忽略工作助手内部文件
-.workbuddy/
+# 忽略敏感文件
+*.js.secret
+credentials.json
+.env
 
-# 操作系统
+# 忽略npm安装的包
+node_modules/
+
+# 忽略构建输出
+dist/
+build/
+
+# 忽略临时脚本
+create-*.js
+check-*.js
+push.bat
+auto-push*.bat
+*.log
+
+# 忽略系统文件
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
-*.swp
-*.swo
