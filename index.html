@@ -389,7 +389,15 @@ select{padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px}
 <div class="toast" id="toast"></div>
 
 <!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+// 超时保护：5秒后强制显示登录
+setTimeout(() => {
+    document.getElementById('loading').style.display = 'none';
+    const toastEl = document.getElementById('toast');
+    if (toastEl) toastEl.className = 'toast';
+}, 5000);
+</script>
 <script>
 // ==================== Supabase 配置 ====================
 const SUPABASE_URL = 'https://qvtrsimodfciaumbmvqh.supabase.co';
