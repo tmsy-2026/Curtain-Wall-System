@@ -1010,14 +1010,17 @@
                 <button type="submit" class="btn btn-primary">登 录</button>
             </form>
             <div style="margin-top:20px;padding-top:15px;border-top:1px solid #eee;text-align:center;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-                <button type="button" onclick="syncFromCloud()" style="background:#fff;color:#27ae60;border:1px solid #27ae60;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;flex:1;min-width:120px;">
-                    ☁️ 从云端同步
+                <button type="button" onclick="syncFromCloud()" style="background:#fff;color:#27ae60;border:1px solid #27ae60;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;flex:1;min-width:100px;">
+                    ☁️ Supabase同步
                 </button>
-                <button type="button" onclick="syncToCloud()" style="background:#fff;color:#e67e22;border:1px solid #e67e22;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;flex:1;min-width:120px;">
-                    ☁️ 上传至云端
+                <button type="button" onclick="syncToCloud()" style="background:#fff;color:#e67e22;border:1px solid #e67e22;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;flex:1;min-width:100px;">
+                    ☁️ Supabase上传
                 </button>
-                <button type="button" onclick="document.getElementById('importFileInput').click()" style="background:#fff;color:#3498db;border:1px solid #3498db;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;flex:1;min-width:120px;">
-                    📥 导入/导出
+                <button type="button" onclick="exportToFile()" style="background:#fff;color:#3498db;border:1px solid #3498db;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;flex:1;min-width:100px;">
+                    📤 导出数据
+                </button>
+                <button type="button" onclick="importFromFile()" style="background:#fff;color:#9b59b6;border:1px solid #9b59b6;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;flex:1;min-width:100px;">
+                    📥 导入数据
                 </button>
             </div>
             <div id="cloudSyncStatus" style="margin-top:10px;text-align:center;font-size:12px;color:#999;"></div>
@@ -2849,6 +2852,50 @@
         }
     }
     
+    // 导出数据到文件（用于WebDAV同步）
+    function exportToFile() {
+        var data = getDB();
+        var jsonStr = JSON.stringify(data, null, 2);
+        var blob = new Blob([jsonStr], {type: 'application/json'});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'cwm-sync.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        alert('数据已导出！\n\n请将 cwm-sync.json 复制到 WebDAV 文件夹：\nZ:\\pro5\\cwm-data\\\n\n然后在其他设备上使用 [从本地导入] 功能。');
+    }
+    
+    // 从本地文件导入数据
+    function importFromFile() {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    // 保存到本地
+                    for (var key in data) {
+                        if (data.hasOwnProperty(key)) {
+                            localStorage.setItem('cwm_' + key, JSON.stringify(data[key]));
+                        }
+                    }
+                    alert('数据导入成功！页面将刷新...');
+                    location.reload();
+                } catch (err) {
+                    alert('导入失败：文件格式错误');
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+    
     // WebDAV上传
     async function webdavPush() {
         var el = document.getElementById('cloudSyncStatus');
@@ -3024,8 +3071,8 @@
         syncDiv.style.cssText = 'padding:12px 16px;border-top:1px solid rgba(255,255,255,0.1);flex-shrink:0;display:flex;flex-wrap:wrap;gap:6px;';
         syncDiv.innerHTML = '<button onclick="syncFromCloud()" style="flex:1;min-width:45%;background:rgba(39,174,96,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 6px;border-radius:8px;cursor:pointer;font-size:11px;">☁️ Supabase同步</button>' +
                           '<button onclick="syncToCloud()" style="flex:1;min-width:45%;background:rgba(230,126,34,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 6px;border-radius:8px;cursor:pointer;font-size:11px;">☁️ Supabase上传</button>' +
-                          '<button onclick="webdavPull()" style="flex:1;min-width:45%;background:rgba(52,152,219,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 6px;border-radius:8px;cursor:pointer;font-size:11px;">📂 WebDAV下载</button>' +
-                          '<button onclick="webdavPush()" style="flex:1;min-width:45%;background:rgba(155,89,182,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 6px;border-radius:8px;cursor:pointer;font-size:11px;">📂 WebDAV上传</button>';
+                          '<button onclick="exportToFile()" style="flex:1;min-width:45%;background:rgba(52,152,219,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 6px;border-radius:8px;cursor:pointer;font-size:11px;">📤 导出数据</button>' +
+                          '<button onclick="importFromFile()" style="flex:1;min-width:45%;background:rgba(155,89,182,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 6px;border-radius:8px;cursor:pointer;font-size:11px;">📥 导入数据</button>';
         sidebar.appendChild(syncDiv);
         
         // 同步状态提示
