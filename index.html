@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>幕墙工程管理系统 - 实时云同步版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Microsoft YaHei',Arial,sans-serif;background:#f0f2f5;min-height:100vh}
+
+/* 登录页 */
+.login-wrap{display:flex;justify-content:center;align-items:center;min-height:100vh}
+.login-box{background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);width:360px}
+.login-box h2{text-align:center;color:#1a73e8;margin-bottom:30px;font-size:24px}
+.login-box input{width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:8px;font-size:14px}
+.login-box button{width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;margin-top:10px}
+.login-box button:hover{background:#1557b0}
+.login-error{color:#e53935;font-size:13px;margin-top:8px;text-align:center;display:none}
+
+/* 主布局 */
+.app-wrap{display:none;height:100vh;overflow:hidden}
+.header{background:#1a73e8;color:#fff;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;font-size:16px}
+.header-left{display:flex;align-items:center;gap:15px}
+.header-right{display:flex;align-items:center;gap:15px;font-size:14px}
+.header span{opacity:0.9}
+.header strong{opacity:1}
+
+.main-layout{display:flex;height:calc(100vh - 60px)}
+
+/* 侧边栏 */
+.sidebar{width:200px;background:#fff;overflow-y:auto;border-right:1px solid #e0e0e0;padding:10px 0}
+.sidebar-item{padding:12px 20px;cursor:pointer;font-size:14px;color:#333;border-left:3px solid transparent;transition:all 0.2s}
+.sidebar-item:hover{background:#e8f0fe;color:#1a73e8}
+.sidebar-item.active{background:#e8f0fe;color:#1a73e8;border-left-color:#1a73e8;font-weight:600}
+.sidebar-item.collapsed{color:#999;font-size:12px;padding-left:30px}
+.sidebar-divider{border-top:1px solid #eee;margin:8px 0}
+
+/* 内容区 */
+.content{flex:1;padding:20px;overflow-y:auto}
+.page{display:none}
+.page.active{display:block}
+
+.page-title{font-size:20px;font-weight:600;color:#333;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #1a73e8}
+
+/* 统计卡片 */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:25px}
+.stat-card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.stat-card .label{font-size:13px;color:#666;margin-bottom:5px}
+.stat-card .value{font-size:28px;font-weight:700;color:#1a73e8}
+.stat-card .sub{font-size:12px;color:#999;margin-top:3px}
+
+/* 按钮 */
+.btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;transition:all 0.2s}
+.btn-primary{background:#1a73e8;color:#fff}
+.btn-primary:hover{background:#1557b0}
+.btn-success{background:#34a853;color:#fff}
+.btn-danger{background:#e53935;color:#fff}
+.btn-warning{background:#fbbc04;color:#333}
+.btn-outline{background:#fff;color:#1a73e8;border:1px solid #1a73e8}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+/* 表格 */
+.table-wrap{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px 15px;text-align:left;font-size:13px;border-bottom:1px solid #eee}
+th{background:#f8f9fa;font-weight:600;color:#333}
+tr:hover{background:#f8f9fa}
+.status-tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px}
+.status-active{background:#e6f4ea;color:#1e7e34}
+.status-pending{background:#fef7e0;color:#b08800}
+.status-rejected{background:#fce8e6;color:#c5221f}
+.status-paid{background:#e6f4ea;color:#1e7e34}
+
+/* 表单 */
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:15px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:13px;color:#666;margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:#1a73e8}
+
+/* 模态框 */
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000}
+.modal.show{display:flex}
+.modal-content{background:#fff;border-radius:12px;width:90%;max-width:700px;max-height:85vh;overflow-y:auto;padding:25px}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-header h3{font-size:18px}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#999;line-height:1}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+
+/* 搜索工具栏 */
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px}
+.toolbar-left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toolbar-right{display:flex;gap:10px}
+.search-input{padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;min-width:200px}
+select{padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px}
+
+/* 云同步状态 */
+.sync-status{position:fixed;bottom:20px;right:20px;background:#fff;padding:10px 15px;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.15);font-size:13px;display:none;z-index:500}
+.sync-status.show{display:block}
+.sync-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.sync-online{background:#34a853}
+.sync-offline{background:#e53935}
+
+/* Toast */
+.toast{position:fixed;top:80px;right:20px;padding:12px 20px;border-radius:8px;font-size:14px;z-index:2000;display:none;animation:slideIn 0.3s}
+.toast.show{display:block}
+.toast-success{background:#e6f4ea;color:#1e7e34;border-left:4px solid #34a853}
+.toast-error{background:#fce8e6;color:#c5221f;border-left:4px solid #e53935}
+.toast-info{background:#e8f0fe;color:#1a73e8;border-left:4px solid #1a73e8}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* 标签页 */
+.tabs{display:flex;gap:5px;margin-bottom:15px;border-bottom:1px solid #eee}
+.tab{padding:8px 16px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;color:#666}
+.tab:hover{color:#1a73e8}
+.tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
+
+/* 响应式 */
+@media(max-width:768px){
+.sidebar{width:160px}
+}
+
+/* 数字/金额 */
+.num{font-family:'Consolas',monospace}
+.positive{color:#34a853}
+.negative{color:#e53935}
+
+/* 加载动画 */
+.loading{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.9);display:flex;justify-content:center;align-items:center;z-index:9999;flex-direction:column;gap:15px}
+.loading-spinner{width:40px;height:40px;border:3px solid #e0e0e0;border-top-color:#1a73e8;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}
+
+/* 项目切换 */
+.project-select{padding:6px 10px;border:1px solid rgba(255,255,255,0.3);border-radius:6px;background:rgba(255,255,255,0.1);color:#fff;font-size:13px}
+.project-select option{color:#333}
+
+/* 小数字徽章 */
+.badge{display:inline-block;background:#e53935;color:#fff;border-radius:10px;padding:2px 7px;font-size:11px;margin-left:5px}
+</style>
+</head>
+<body>
+
+<!-- 加载动画 -->
+<div class="loading" id="loading">
+<div class="loading-spinner"></div>
+<div style="font-size:14px;color:#666">正在连接云端...</div>
+</div>
+
+<!-- 登录页 -->
+<div class="login-wrap" id="loginPage">
+<div class="login-box">
+<h2>🏗️ 幕墙工程管理系统</h2>
+<h4 style="text-align:center;color:#666;margin-bottom:20px;font-weight:normal">实时云同步版</h4>
+<input type="text" id="loginUser" placeholder="用户名" autocomplete="off">
+<input type="password" id="loginPass" placeholder="密码" onkeydown="if(event.key==='Enter')doLogin()">
+<button onclick="doLogin()">登录</button>
+<div class="login-error" id="loginError">用户名或密码错误</div>
+</div>
+</div>
+
+<!-- 主应用 -->
+<div class="app-wrap" id="appWrap">
+<div class="header">
+<div class="header-left">
+<div style="font-weight:700;font-size:18px">🏗️ 幕墙管理系统</div>
+<select class="project-select" id="projectFilter" onchange="onProjectChange()">
+<option value="">全部项目</option>
+</select>
+</div>
+<div class="header-right">
+<span id="currentUser">-</span>
+<span>·</span>
+<span id="currentRole">-</span>
+<span>·</span>
+<span id="syncStatus" style="display:flex;align-items:center;gap:5px">
+<span class="sync-dot sync-offline" id="syncDot"></span>
+<span id="syncText">连接中...</span>
+</span>
+<span>·</span>
+<button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:#fff" onclick="doLogout()">退出</button>
+</div>
+</div>
+
+<div class="main-layout">
+<div class="sidebar">
+<div class="sidebar-item active" onclick="showPage('dashboard')">📊 仪表盘</div>
+<div class="sidebar-item" onclick="showPage('projects')">📋 项目管理</div>
+<div class="sidebar-item" onclick="showPage('staff')">👷 劳务管理</div>
+<div class="sidebar-item" onclick="showPage('attendance')">📅 考勤管理</div>
+<div class="sidebar-item" onclick="showPage('materials')">📦 材料管理</div>
+<div class="sidebar-item" onclick="showPage('inventory')">📥 入库管理</div>
+<div class="sidebar-item" onclick="showPage('outbound')">📤 出库管理</div>
+<div class="sidebar-divider"></div>
+<div class="sidebar-item" onclick="showPage('income')">💰 收入管理</div>
+<div class="sidebar-item" onclick="showPage('expense')">💸 支出管理</div>
+<div class="sidebar-item" onclick="showPage('approvals')">✅ 审批管理</div>
+<div class="sidebar-divider"></div>
+<div class="sidebar-item" onclick="showPage('accounts')" id="menuAccounts">👤 账号管理</div>
+<div class="sidebar-item" onclick="showPage('backup')">☁️ 数据管理</div>
+</div>
+
+<div class="content">
+<!-- 仪表盘 -->
+<div class="page active" id="page-dashboard">
+<div class="page-title">📊 仪表盘</div>
+<div class="stats-grid" id="statsCards"></div>
+<div class="table-wrap" style="margin-top:20px">
+<h3 style="padding:15px 15px 5px;font-size:15px">📋 今日待办审批</h3>
+<div id="pendingApprovals"></div>
+</div>
+</div>
+
+<!-- 项目管理 -->
+<div class="page" id="page-projects">
+<div class="page-title">📋 项目管理</div>
+<div class="toolbar">
+<div class="toolbar-left">
+<select id="projectStatusFilter"><option value="">全部状态</option><option value="进行中">进行中</option><option value="已完成">已完成</option><option value="暂停">暂停</option></select>
+</div>
+<div class="toolbar-right">
+<button class="btn btn-primary" onclick="openProjectModal()">+ 新增项目</button>
+</div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>项目编号</th><th>项目名称</th><th>状态</th><th>备注</th><th>操作</th></tr></thead><tbody id="projectsTable"></tbody></table></div>
+</div>
+
+<!-- 劳务管理 -->
+<div class="page" id="page-staff">
+<div class="page-title">👷 劳务管理</div>
+<div class="toolbar">
+<div class="toolbar-left">
+<input class="search-input" id="staffSearch" placeholder="搜索姓名/工种..." oninput="loadStaff()">
+<select id="staffTeamFilter" onchange="loadStaff()"><option value="">全部班组</option></select>
+<select id="staffStatusFilter" onchange="loadStaff()"><option value="">全部状态</option><option value="在职">在职</option><option value="已离职">已离职</option></select>
+</div>
+<div class="toolbar-right">
+<button class="btn btn-primary" onclick="openStaffModal()">+ 新增人员</button>
+</div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>姓名</th><th>工种/班组</th><th>电话</th><th>入职日期</th><th>状态</th><th>操作</th></tr></thead><tbody id="staffTable"></tbody></table></div>
+</div>
+
+<!-- 考勤管理 -->
+<div class="page" id="page-attendance">
+<div class="page-title">📅 考勤管理</div>
+<div class="toolbar">
+<div class="toolbar-left">
+<input type="month" id="attMonth" onchange="loadAttendance()">
+<select id="attStaffFilter" onchange="loadAttendance()"><option value="">全部人员</option></select>
+<select id="attDayFilter" onchange="loadAttendance()"><option value="">全部状态</option><option value="出勤">出勤</option><option value="请假">请假</option><option value="旷工">旷工</option></select>
+</div>
+<div class="toolbar-right">
+<button class="btn btn-primary" onclick="openAttendanceModal()">+ 录入考勤</button>
+<button class="btn btn-outline" onclick="batchAttendance()">批量录入</button>
+</div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>日期</th><th>姓名</th><th>考勤状态</th><th>工时</th><th>备注</th><th>操作</th></tr></thead><tbody id="attendanceTable"></tbody></table></div>
+</div>
+
+<!-- 材料管理 -->
+<div class="page" id="page-materials">
+<div class="page-title">📦 材料档案</div>
+<div class="toolbar">
+<div class="toolbar-left">
+<select id="matCatFilter" onchange="loadMaterials()"><option value="">全部分类</option></select>
+<select id="matSubFilter" onchange="loadMaterials()"><option value="">全部子类</option></select>
+</div>
+<div class="toolbar-right">
+<button class="btn btn-primary" onclick="openMaterialModal()">+ 新增材料</button>
+</div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>编号</th><th>名称</th><th>分类</th><th>规格</th><th>单位</th><th>单价</th><th>操作</th></tr></thead><tbody id="materialsTable"></tbody></table></div>
+</div>
+
+<!-- 入库管理 -->
+<div class="page" id="page-inventory">
+<div class="page-title">📥 入库记录</div>
+<div class="toolbar">
+<div class="toolbar-left">
+<input type="date" id="invDateFrom" onchange="loadInventory()">
+<span style="color:#999">至</span>
+<input type="date" id="invDateTo" onchange="loadInventory()">
+<select id="invMatFilter" onchange="loadInventory()"><option value="">全部材料</option></select>
+</div>
+<div class="toolbar-right">
+<button class="btn btn-primary" onclick="openInventoryModal()">+ 新增进库</button>
+</div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>入库单号</th><th>日期</th><th>材料</th><th>数量</th><th>单价</th><th>合计</th><th>供应商</th><th>操作</th></tr></thead><tbody id="inventoryTable"></tbody></table></div>
+</div>
+
+<!-- 出库管理 -->
+<div class="page" id="page-outbound">
+<div class="page-title">📤 出库记录</div>
+<div class="toolbar">
+<div class="toolbar-left">
+<input type="date" id="outDateFrom" onchange="loadOutbound()">
+<span style="color:#999">至</span>
+<input type="date" id="outDateTo" onchange="loadOutbound()">
+<select id="outMatFilter" onchange="loadOutbound()"><option value="">全部材料</option></select>
+</div>
+<div class="toolbar-right">
+<button class="btn btn-primary" onclick="openOutboundModal()">+ 新增出库</button>
+</div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>出库单号</th><th>日期</th><th>材料</th><th>数量</th><th>单位</th><th>用途</th><th>操作</th></tr></thead><tbody id="outboundTable"></tbody></table></div>
+</div>
+
+<!-- 收入管理 -->
+<div class="page" id="page-income">
+<div class="page-title">💰 收入管理</div>
+<div class="toolbar">
+<div class="toolbar-left">
+<input type="month" id="incMonth" onchange="loadIncome()">
+</div>
+<div class="toolbar-right">
+<button class="btn btn-primary" onclick="openIncomeModal()">+ 新增收入</button>
+</div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>日期</th><th>标题</th><th>类型</th><th>金额</th><th>备注</th><th>操作</th></tr></thead><tbody id="incomeTable"></tbody></table></div>
+</div>
+
+<!-- 支出管理 -->
+<div class="page" id="page-expense">
+<div class="page-title">💸 支出管理</div>
+<div class="toolbar">
+<div class="toolbar-left">
+<input type="month" id="expMonth" onchange="loadExpense()">
+<select id="expTypeFilter" onchange="loadExpense()"><option value="">全部类型</option><option value="材料款">材料款</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="管理费">管理费</option><option value="其他">其他</option></select>
+</div>
+<div class="toolbar-right">
+<button class="btn btn-primary" onclick="openExpenseModal()">+ 新增支出</button>
+</div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>日期</th><th>标题</th><th>类型</th><th>金额</th><th>备注</th><th>操作</th></tr></thead><tbody id="expenseTable"></tbody></table></div>
+</div>
+
+<!-- 审批管理 -->
+<div class="page" id="page-approvals">
+<div class="page-title">✅ 审批管理</div>
+<div class="toolbar">
+<div class="toolbar-left">
+<select id="apprTypeFilter" onchange="loadApprovals()"><option value="">全部类型</option><option value="采购申请">采购申请</option><option value="合同申请">合同申请</option><option value="付款申请">付款申请</option><option value="报销申请">报销申请</option><option value="备用金借支">备用金借支</option></select>
+<select id="apprStatusFilter" onchange="loadApprovals()"><option value="">全部状态</option><option value="待审批">待审批</option><option value="已通过">已通过</option><option value="已拒绝">已拒绝</option></select>
+</div>
+<div class="toolbar-right">
+<button class="btn btn-primary" onclick="openApprovalModal()">+ 新建申请</button>
+</div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>申请单号</th><th>类型</th><th>标题</th><th>金额</th><th>申请人</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody id="approvalsTable"></tbody></table></div>
+</div>
+
+<!-- 账号管理 -->
+<div class="page" id="page-accounts">
+<div class="page-title">👤 账号管理</div>
+<div class="toolbar">
+<div class="toolbar-right">
+<button class="btn btn-primary" onclick="openAccountModal()">+ 新增账号</button>
+</div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>手机</th><th>状态</th><th>操作</th></tr></thead><tbody id="accountsTable"></tbody></table></div>
+</div>
+
+<!-- 数据管理 -->
+<div class="page" id="page-backup">
+<div class="page-title">☁️ 数据管理</div>
+<div style="background:#fff;border-radius:10px;padding:30px;max-width:600px">
+<h3 style="margin-bottom:20px">实时云端同步状态</h3>
+<div style="padding:15px;background:#f8f9fa;border-radius:8px;margin-bottom:15px">
+<p style="font-size:14px;margin-bottom:8px"><span class="sync-dot sync-online" id="dot2"></span> <strong>Supabase 连接状态：</strong> <span id="connStatus">检测中...</span></p>
+<p style="font-size:14px;margin-bottom:8px"><strong>最后同步：</strong> <span id="lastSync">-</span></p>
+<p style="font-size:14px"><strong>当前项目：</strong> <span id="backupProject">-</span></p>
+</div>
+<div style="padding:15px;background:#fff3cd;border-radius:8px;font-size:13px;color:#856404;margin-bottom:20px">
+⚡ 本系统为实时云端同步，所有操作即时生效，无需手动上传/下载。
+</div>
+<button class="btn btn-danger" onclick="clearAllData()">🗑️ 清空所有云端数据（慎用）</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 模态框 -->
+<div class="modal" id="modal"><div class="modal-content"><div class="modal-header"><h3 id="modalTitle"></h3><button class="modal-close" onclick="closeModal()">&times;</button></div><div id="modalBody"></div></div></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ==================== Supabase 配置 ====================
+const SUPABASE_URL = 'https://qvtrsimodfciaumbmvqh.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2dHJzaW1vZGZjaWF1bWJtdnFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU4MjgwMDAsImV4cCI6MjA2MTQwNDAwMH0.PZq0U4F7lWMF4Z5hKd3qK7bYJ8pR2tN6cX3vM9yQ8sU';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ==================== 全局状态 ====================
+let currentUser = null;
+let currentProject = '';
+let db = {};
+let realtimeChannels = [];
+
+// ==================== 工具函数 ====================
+function toast(msg, type='info') {
+    const t = document.getElementById('toast');
+    t.className = `toast toast-${type} show`;
+    t.textContent = msg;
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function formatDate(d) {
+    if (!d) return '-';
+    return new Date(d).toLocaleDateString('zh-CN');
+}
+
+function fmtMoney(n) {
+    if (n == null) return '-';
+    return Number(n).toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function genId(prefix) {
+    const t = new Date().toISOString().replace(/[-T:.Z]/g,'').slice(2,12);
+    return `${prefix}-${t}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+}
+
+function getUserProject() {
+    return currentUser && currentUser.project === 'ALL' ? '' : (currentProject || currentUser?.project || '');
+}
+
+// ==================== 登录 ====================
+async function doLogin() {
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value;
+    if (!u || !p) { toast('请输入用户名和密码','error'); return; }
+    
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('loginError').style.display = 'none';
+    
+    try {
+        const { data, error } = await supabase
+            .from('cwm_users')
+            .select('*')
+            .eq('username', u)
+            .eq('password', p)
+            .eq('status', 'active')
+            .maybeSingle();
+        
+        if (error) throw error;
+        
+        if (!data) {
+            document.getElementById('loginError').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+            return;
+        }
+        
+        currentUser = data;
+        sessionStorage.setItem('cwm_user', JSON.stringify(data));
+        showApp();
+    } catch(e) {
+        console.error('登录错误:', e);
+        document.getElementById('loginError').textContent = '网络错误，请稍后重试';
+        document.getElementByIdById('loginError').style.display = 'block';
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function doLogout() {
+    sessionStorage.removeItem('cwm_user');
+    realtimeChannels.forEach(c => c.unsubscribe());
+    realtimeChannels = [];
+    document.getElementById('appWrap').style.display = 'none';
+    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+}
+
+// ==================== 主应用初始化 ====================
+async function showApp() {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('appWrap').style.display = 'block';
+    
+    document.getElementById('currentUser').textContent = currentUser.name || currentUser.username;
+    document.getElementById('currentRole').textContent = ROLE_NAMES[currentUser.role] || currentUser.role;
+    
+    // 权限
+    if (currentUser.role !== 'manager') {
+        document.getElementById('menuAccounts').style.display = 'none';
+    }
+    
+    // 加载项目
+    await loadProjectsForFilter();
+    
+    // 启动实时监听
+    startRealtime();
+    
+    // 显示首页
+    showPage('dashboard');
+    
+    document.getElementById('loading').style.display = 'none';
+}
+
+// ==================== 实时同步 ====================
+function startRealtime() {
+    document.getElementById('connStatus').textContent = '已连接 ✅';
+    document.getElementById('connStatus').style.color = '#34a853';
+    document.getElementById('syncDot').className = 'sync-dot sync-online';
+    document.getElementById('syncDot2') && (document.getElementById('syncDot2').className = 'sync-dot sync-online');
+    document.getElementById('syncText').textContent = '已连接';
+    document.getElementById('lastSync').textContent = new Date().toLocaleString('zh-CN');
+    
+    const tables = ['cwm_projects','cwm_staff','cwm_attendance','cwm_materials','cwm_inventory','cwm_outbound','cwm_approvals','cwm_income','cwm_expense'];
+    tables.forEach(table => {
+        const ch = supabase.channel(`r-${table}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table }, (p) => {
+                document.getElementById('lastSync').textContent = new Date().toLocaleString('zh-CN');
+                // 触发对应页面刷新
+                const page = tableToPage(table);
+                if (document.getElementById(`page-${page}`) && document.getElementById(`page-${page}`).classList.contains('active')) {
+                    window[`load${page.charAt(0).toUpperCase()+page.slice(1)}`] && window[`load${page.charAt(0).toUpperCase()+page.slice(1)}`]();
+                }
+                // 更新仪表盘
+                if (document.getElementById('page-dashboard').classList.contains('active')) {
+                    loadDashboard();
+                }
+            })
+            .subscribe();
+        realtimeChannels.push(ch);
+    });
+}
+
+function tableToPage(table) {
+    const map = {
+        cwm_projects:'projects', cwm_staff:'staff', cwm_attendance:'attendance',
+        cwm_materials:'materials', cwm_inventory:'inventory', cwm_outbound:'outbound',
+        cwm_approvals:'approvals', cwm_income:'income', cwm_expense:'expense'
+    };
+    return map[table] || '';
+}
+
+// ==================== 页面导航 ====================
+function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(`page-${name}`).classList.add('active');
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    event && event.target && event.target.classList && event.target.classList.add('active');
+    
+    const loaders = {
+        dashboard: loadDashboard, projects: loadProjects, staff: loadStaff,
+        attendance: loadAttendance, materials: loadMaterials, inventory: loadInventory,
+        outbound: loadOutbound, income: loadIncome, expense: loadExpense,
+        approvals: loadApprovals, accounts: loadAccounts
+    };
+    if (loaders[name]) loaders[name]();
+}
+
+// ==================== 模态框 ====================
+function openModal(title, body, w='90%') {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = body;
+    document.getElementById('modal').style.display = 'flex';
+    document.getElementById('modal').querySelector('.modal-content').style.maxWidth = w;
+}
+
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+}
+
+// ==================== 角色配置 ====================
+const ROLE_NAMES = { manager:'项目经理', finance:'财务', warehouse:'仓管员', labor:'劳务员', purchaser:'采购员', approver:'审批员' };
+const ROLE_PERMS = {
+    manager: ['dashboard','projects','staff','attendance','materials','inventory','outbound','income','expense','approvals','accounts','backup'],
+    finance: ['dashboard','income','expense','approvals','backup'],
+    warehouse: ['dashboard','materials','inventory','outbound','approvals','backup'],
+    labor: ['dashboard','staff','attendance','approvals','backup'],
+    purchaser: ['dashboard','materials','approvals','backup'],
+    approver: ['dashboard','approvals','backup']
+};
+
+// ==================== 项目 ====================
+async function loadProjectsForFilter() {
+    const { data } = await supabase.from('cwm_projects').select('project_id,project_name');
+    const sel = document.getElementById('projectFilter');
+    const opts = [{value:'',text:'全部项目'}];
+    if (currentUser.project !== 'ALL') {
+        sel.style.display = 'none';
+    } else {
+        data && data.forEach(r => opts.push({value:r.project_id, text:r.project_name}));
+    }
+    sel.innerHTML = opts.map(o => `<option value="${o.value}">${o.text}</option>`).join('');
+}
+
+function onProjectChange() {
+    currentProject = document.getElementById('projectFilter').value;
+    const name = document.getElementById('projectFilter').selectedOptions[0].textContent;
+    document.getElementById('backupProject').textContent = name;
+    showPage(getCurrentPage());
+}
+
+function getCurrentPage() {
+    return document.querySelector('.page.active').id.replace('page-','');
+}
+
+async function loadProjects() {
+    const proj = getUserProject();
+    let q = supabase.from('cwm_projects').select('*').order('created_at', {ascending:false});
+    if (proj) q = q.eq('project_id', proj);
+    const { data } = await q;
+    const statusF = document.getElementById('projectStatusFilter').value;
+    const filtered = statusF ? (data||[]).filter(r => r.status === statusF) : (data||[]);
+    document.getElementById('projectsTable').innerHTML = filtered.map(r => `
+        <tr>
+            <td>${r.project_id||'-'}</td>
+            <td>${r.project_name||'-'}</td>
+            <td><span class="status-tag ${r.status==='进行中'?'status-active':r.status==='已完成'?'status-paid':'status-pending'}">${r.status||'-'}</span></td>
+            <td>${r.description||'-'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editProject('${r.id}')">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="delProject('${r.id}')">删除</button>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#999">暂无数据</td></tr>';
+}
+
+function openProjectModal(id) {
+    const title = id ? '编辑项目' : '新增项目';
+    openModal(title, `
+        <input type="hidden" id="p-id" value="${id||''}">
+        <div class="form-group"><label>项目编号</label><input id="p-id2" placeholder="如 P001" value="${id?'':''}"></div>
+        <div class="form-row">
+            <div class="form-group"><label>项目名称 *</label><input id="p-name" placeholder="项目名称" required></div>
+            <div class="form-group"><label>状态</label><select id="p-status"><option value="进行中">进行中</option><option value="已完成">已完成</option><option value="暂停">暂停</option></select></div>
+        </div>
+        <div class="form-group"><label>备注</label><textarea id="p-desc" placeholder="备注信息"></textarea></div>
+    `);
+    if (id) {
+        supabase.from('cwm_projects').select('*').eq('id',id).single().then(({data}) => {
+            if (data) {
+                document.getElementById('p-id').value = data.id;
+                document.getElementById('p-id2').value = data.project_id||'';
+                document.getElementById('p-name').value = data.project_name||'';
+                document.getElementById('p-status').value = data.status||'进行中';
+                document.getElementById('p-desc').value = data.description||'';
+            }
+        });
+    }
+}
+
+async function saveProject() {
+    const id = document.getElementById('p-id').value;
+    const row = {
+        project_id: document.getElementById('p-id2').value || genId('P'),
+        project_name: document.getElementById('p-name').value,
+        status: document.getElementById('p-status').value,
+        description: document.getElementById('p-desc').value,
+        created_at: new Date().toISOString()
+    };
+    if (!row.project_name) { toast('项目名称不能为空','error'); return; }
+    let err;
+    if (id) {
+        ({ error: err } = await supabase.from('cwm_projects').update(row).eq('id', id));
+    } else {
+        ({ error: err } = await supabase.from('cwm_projects').insert(row));
+    }
+    if (err) { toast('保存失败: '+err.message,'error'); return; }
+    toast(id?'更新成功':'新增成功','success');
+    closeModal(); loadProjects(); loadProjectsForFilter();
+}
+
+async function delProject(id) {
+    if (!confirm('确定删除？')) return;
+    const { error } = await supabase.from('cwm_projects').delete().eq('id', id);
+    if (error) { toast('删除失败','error'); return; }
+    toast('删除成功','success'); loadProjects();
+}
+
+// ==================== 仪表盘 ====================
+async function loadDashboard() {
+    const proj = getUserProject();
+    const now = new Date();
+    
+    // 统计
+    const staffQ = supabase.from('cwm_staff').select('id', {count:'exact'}).eq('status','在职');
+    const invQ = supabase.from('cwm_inventory').select('total', {count:'exact'}).gte('created_at', now.toISOString().slice(0,10)+'T00:00:00');
+    const apprQ = supabase.from('cwm_approvals').select('id', {count:'exact'}).eq('status','待审批');
+    const expQ = supabase.from('cwm_expense').select('amount');
+    
+    let [s,i,a,e] = await Promise.all([
+        staffQ, invQ, apprQ, expQ
+    ]);
+    
+    const expTotal = (e.data||[]).reduce((s,v) => s+(Number(v.amount)||0), 0);
+    
+    document.getElementById('statsCards').innerHTML = `
+        <div class="stat-card"><div class="label">在职人员</div><div class="value">${s.count||0}</div><div class="sub">劳务人员</div></div>
+        <div class="stat-card"><div class="label">今日入库</div><div class="value">¥${fmtMoney(i.count||0)}</div><div class="sub">笔数</div></div>
+        <div class="stat-card"><div class="label">待审批</div><div class="value" style="color:#fbbc04">${a.count||0}</div><div class="sub">审批事项</div></div>
+        <div class="stat-card"><div class="label">累计支出</div><div class="value negative">¥${fmtMoney(expTotal)}</div><div class="sub">总支出</div></div>
+    `;
+    
+    // 待审批
+    const { data: apr } = await supabase.from('cwm_approvals').select('*').eq('status','待审批').order('created_at',{ascending:false}).limit(10);
+    document.getElementById('pendingApprovals').innerHTML = apr && apr.length ? `
+        <table><thead><tr><th>类型</th><th>标题</th><th>金额</th><th>申请人</th><th>时间</th><th>操作</th></tr></thead><tbody>
+        ${apr.map(r => `<tr><td>${r.type||'-'}</td><td>${r.title||'-'}</td><td class="num">¥${fmtMoney(r.amount)}</td><td>${r.applicant||'-'}</td><td>${formatDate(r.created_at)}</td><td><button class="btn btn-sm btn-primary" onclick="showPage('approvals')">查看</button></td></tr>`).join('')}
+        </tbody></table>` : '<div style="padding:30px;text-align:center;color:#999">暂无待审批事项 ✅</div>';
+}
+
+// ==================== 劳务 ====================
+async function loadStaff() {
+    const proj = getUserProject();
+    const search = document.getElementById('staffSearch').value;
+    const team = document.getElementById('staffTeamFilter').value;
+    const status = document.getElementById('staffStatusFilter').value;
+    
+    let q = supabase.from('cwm_staff').select('*').order('created_at',{ascending:false});
+    if (proj) q = q.eq('project', proj);
+    const { data } = await q;
+    
+    // 班组筛选
+    let filtered = data||[];
+    if (search) filtered = filtered.filter(r => (r.name||'').includes(search) || (r.team||'').includes(search));
+    if (team) filtered = filtered.filter(r => r.team === team);
+    if (status) filtered = filtered.filter(r => r.status === status);
+    
+    // 更新班组下拉
+    const teams = [...new Set((data||[]).map(r=>r.team).filter(Boolean))];
+    document.getElementById('staffTeamFilter').innerHTML = '<option value="">全部班组</option>' + teams.map(t => `<option value="${t}">${t}</option>`).join('');
+    
+    document.getElementById('staffTable').innerHTML = filtered.map(r => `
+        <tr>
+            <td>${r.name||'-'}</td><td>${r.team||'-'}</td><td>${r.phone||'-'}</td>
+            <td>${r.entry_date||'-'}</td>
+            <td><span class="status-tag ${r.status==='在职'?'status-active':'status-rejected'}">${r.status||'-'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editStaff('${r.id}')">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="delStaff('${r.id}')">删除</button>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#999">暂无数据</td></tr>';
+}
+
+function openStaffModal(id) {
+    const title = id ? '编辑人员' : '新增人员';
+    openModal(title, `
+        <input type="hidden" id="s-id" value="${id||''}">
+        <div class="form-row">
+            <div class="form-group"><label>姓名 *</label><input id="s-name" placeholder="姓名" required></div>
+            <div class="form-group"><label>工种/班组</label><input id="s-team" placeholder="如：焊工班"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>电话</label><input id="s-phone" placeholder="手机号"></div>
+            <div class="form-group"><label>身份证</label><input id="s-idcard" placeholder="身份证号"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>入职日期</label><input id="s-entry" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+            <div class="form-group"><label>状态</label><select id="s-status"><option value="在职">在职</option><option value="已离职">已离职</option></select></div>
+        </div>
+    `);
+    if (id) {
+        supabase.from('cwm_staff').select('*').eq('id',id).single().then(({data:r}) => {
+            if (r) {
+                document.getElementById('s-id').value = r.id;
+                document.getElementById('s-name').value = r.name||'';
+                document.getElementById('s-team').value = r.team||'';
+                document.getElementById('s-phone').value = r.phone||'';
+                document.getElementById('s-idcard').value = r.id_card||'';
+                document.getElementById('s-entry').value = r.entry_date||'';
+                document.getElementById('s-status').value = r.status||'在职';
+            }
+        });
+    }
+}
+
+async function saveStaff() {
+    const id = document.getElementById('s-id').value;
+    const row = {
+        name: document.getElementById('s-name').value,
+        team: document.getElementById('s-team').value,
+        phone: document.getElementById('s-phone').value,
+        id_card: document.getElementById('s-idcard').value,
+        entry_date: document.getElementById('s-entry').value,
+        status: document.getElementById('s-status').value,
+        project: getUserProject() || '',
+        created_at: new Date().toISOString()
+    };
+    if (!row.name) { toast('姓名不能为空','error'); return; }
+    let err;
+    if (id) {
+        ({ error: err } = await supabase.from('cwm_staff').update(row).eq('id', id));
+    } else {
+        row.staff_id = genId('ST');
+        ({ error: err } = await supabase.from('cwm_staff').insert(row));
+    }
+    if (err) { toast('保存失败: '+err.message,'error'); return; }
+    toast(id?'更新成功':'新增成功','success');
+    closeModal(); loadStaff();
+}
+
+async function delStaff(id) {
+    if (!confirm('确定删除？')) return;
+    const { error } = await supabase.from('cwm_staff').delete().eq('id', id);
+    if (error) { toast('删除失败','error'); return; }
+    toast('删除成功','success'); loadStaff();
+}
+
+// ==================== 考勤 ====================
+async function loadAttendance() {
+    const proj = getUserProject();
+    const month = document.getElementById('attMonth').value;
+    const staffF = document.getElementById('attStaffFilter').value;
+    const dayF = document.getElementById('attDayFilter').value;
+    
+    if (!month) {
+        document.getElementById('attMonth').value = new Date().toISOString().slice(0,7);
+    }
+    const m = month || new Date().toISOString().slice(0,7);
+    
+    let q = supabase.from('cwm_attendance').select('*').ilike('date', m+ '%').order('date',{ascending:false});
+    if (proj) q = q.eq('project', proj);
+    const { data } = await q;
+    
+    // 人员筛选
+    let { data: allStaff } = await supabase.from('cwm_staff').select('name').eq('status','在职');
+    document.getElementById('attStaffFilter').innerHTML = '<option value="">全部人员</option>' + 
+        (allStaff||[]).map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+    
+    let filtered = data||[];
+    if (staffF) filtered = filtered.filter(r => r.staff_name === staffF);
+    if (dayF) filtered = filtered.filter(r => r.status === dayF);
+    
+    document.getElementById('attendanceTable').innerHTML = filtered.map(r => `
+        <tr>
+            <td>${r.date||'-'}</td><td>${r.staff_name||'-'}</td>
+            <td><span class="status-tag ${r.status==='出勤'?'status-active':'status-pending'}">${r.status||'-'}</span></td>
+            <td>${r.hours||'8'}</td><td>${r.remark||'-'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editAttendance('${r.id}')">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="delAttendance('${r.id}')">删除</button>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#999">暂无数据</td></tr>';
+}
+
+function openAttendanceModal(id) {
+    const title = id ? '编辑考勤' : '录入考勤';
+    const today = new Date().toISOString().slice(0,10);
+    openModal(title, `
+        <input type="hidden" id="a-id" value="${id||''}">
+        <div class="form-row">
+            <div class="form-group"><label>日期</label><input id="a-date" type="date" value="${today}"></div>
+            <div class="form-group"><label>姓名 *</label><input id="a-name" placeholder="姓名" required list="staffList"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>考勤状态</label><select id="a-status"><option value="出勤">出勤</option><option value="请假">请假</option><option value="旷工">旷工</option></select></div>
+            <div class="form-group"><label>工时</label><input id="a-hours" type="number" value="8" min="0" max="24"></div>
+        </div>
+        <div class="form-group"><label>备注</label><textarea id="a-remark" placeholder="备注"></textarea></div>
+        <datalist id="staffList"></datalist>
+    `);
+    supabase.from('cwm_staff').select('name').eq('status','在职').then(({data}) => {
+        document.getElementById('staffList').innerHTML = (data||[]).map(s => `<option value="${s.name}">`).join('');
+    });
+    if (id) {
+        supabase.from('cwm_attendance').select('*').eq('id',id).single().then(({data:r}) => {
+            if (r) {
+                ['a-id','a-date','a-name','a-status','a-hours','a-remark'].forEach(k => {
+                    const el = document.getElementById(k);
+                    if (el) el.value = r[k.replace('a-','')] || el.value;
+                });
+            }
+        });
+    }
+}
+
+async function saveAttendance() {
+    const id = document.getElementById('a-id').value;
+    const row = {
+        date: document.getElementById('a-date').value,
+        staff_name: document.getElementById('a-name').value,
+        status: document.getElementById('a-status').value,
+        hours: Number(document.getElementById('a-hours').value),
+        remark: document.getElementById('a-remark').value,
+        project: getUserProject(),
+        created_at: new Date().toISOString()
+    };
+    if (!row.staff_name) { toast('姓名不能为空','error'); return; }
+    let err;
+    if (id) {
+        ({ error: err } = await supabase.from('cwm_attendance').update(row).eq('id', id));
+    } else {
+        row.staff_id = genId('AT');
+        ({ error: err } = await supabase.from('cwm_attendance').insert(row));
+    }
+    if (err) { toast('保存失败','error'); return; }
+    toast('保存成功','success'); closeModal(); loadAttendance();
+}
+
+async function delAttendance(id) {
+    if (!confirm('确定删除？')) return;
+    await supabase.from('cwm_attendance').delete().eq('id', id);
+    toast('删除成功','success'); loadAttendance();
+}
+
+function batchAttendance() {
+    const today = new Date().toISOString().slice(0,10);
+    openModal('批量录入考勤', `
+        <p style="font-size:13px;color:#666;margin-bottom:15px">为所有在职人员批量设置当天考勤状态</p>
+        <div class="form-row">
+            <div class="form-group"><label>日期</label><input id="b-date" type="date" value="${today}"></div>
+            <div class="form-group"><label>状态</label><select id="b-status"><option value="出勤">出勤</option><option value="请假">请假</option><option value="旷工">旷工</option></select></div>
+        </div>
+    `);
+}
+
+async function saveBatchAttendance() {
+    const date = document.getElementById('b-date').value;
+    const status = document.getElementById('b-status').value;
+    if (!date) { toast('请选择日期','error'); return; }
+    const { data: staff } = await supabase.from('cwm_staff').select('name').eq('status','在职');
+    if (!staff||!staff.length) { toast('没有在职人员','error'); return; }
+    const rows = staff.map(s => ({
+        staff_id: genId('AT'), staff_name: s.name, date, status,
+        hours: status==='出勤'?8:0, project: getUserProject(), created_at: new Date().toISOString()
+    }));
+    await supabase.from('cwm_attendance').insert(rows);
+    toast(`已为 ${rows.length} 人录入考勤`,'success'); closeModal(); loadAttendance();
+}
+
+// ==================== 材料 ====================
+async function loadMaterials() {
+    const proj = getUserProject();
+    const cat = document.getElementById('matCatFilter').value;
+    const sub = document.getElementById('matSubFilter').value;
+    let q = supabase.from('cwm_materials').select('*').order('created_at',{ascending:false});
+    if (proj) q = q.eq('project', proj);
+    const { data } = await q;
+    
+    // 分类筛选
+    const cats = [...new Set((data||[]).map(r=>r.category).filter(Boolean))];
+    document.getElementById('matCatFilter').innerHTML = '<option value="">全部分类</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (cat) {
+        const subs = [...new Set((data||[]).filter(r=>r.category===cat).map(r=>r.sub_category).filter(Boolean))];
+        document.getElementById('matSubFilter').innerHTML = '<option value="">全部子类</option>' + subs.map(s => `<option value="${s}">${s}</option>`).join('');
+    }
+    
+    let filtered = data||[];
+    if (cat) filtered = filtered.filter(r => r.category===cat);
+    if (sub) filtered = filtered.filter(r => r.sub_category===sub);
+    
+    document.getElementById('materialsTable').innerHTML = filtered.map(r => `
+        <tr>
+            <td>${r.material_id||'-'}</td><td>${r.name||'-'}</td><td>${r.category||'-'}</td>
+            <td>${r.spec||'-'}</td><td>${r.unit||'-'}</td>
+            <td class="num">¥${fmtMoney(r.price)}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editMaterial('${r.id}')">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="delMaterial('${r.id}')">删除</button>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:#999">暂无数据</td></tr>';
+}
+
+function openMaterialModal(id) {
+    const title = id ? '编辑材料' : '新增材料';
+    openModal(title, `
+        <input type="hidden" id="m-id" value="${id||''}">
+        <div class="form-row">
+            <div class="form-group"><label>材料名称 *</label><input id="m-name" placeholder="如：铝单板" required></div>
+            <div class="form-group"><label>大类</label><select id="m-cat"><option value="">请选择</option><option>面材</option><option>型材</option><option>五金</option><option>辅材</option></select></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>小类</label><input id="m-sub" placeholder="如：氟碳铝单板"></div>
+            <div class="form-group"><label>规格</label><input id="m-spec" placeholder="如：3mm厚"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>单位</label><input id="m-unit" placeholder="如：平方米、个、根"></div>
+            <div class="form-group"><label>单价(元)</label><input id="m-price" type="number" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="form-group"><label>备注</label><textarea id="m-remark" placeholder="备注"></textarea></div>
+    `);
+    if (id) {
+        supabase.from('cwm_materials').select('*').eq('id',id).single().then(({data:r}) => {
+            if (r) {
+                ['m-id','m-name','m-cat','m-sub','m-spec','m-unit','m-price','m-remark'].forEach(k => {
+                    const el = document.getElementById(k);
+                    if (el) el.value = r[k.replace('m-','')] || '';
+                });
+            }
+        });
+    }
+}
+
+async function saveMaterial() {
+    const id = document.getElementById('m-id').value;
+    const row = {
+        name: document.getElementById('m-name').value,
+        category: document.getElementById('m-cat').value,
+        sub_category: document.getElementById('m-sub').value,
+        spec: document.getElementById('m-spec').value,
+        unit: document.getElementById('m-unit').value,
+        price: Number(document.getElementById('m-price').value)||0,
+        remark: document.getElementById('m-remark').value,
+        project: getUserProject(),
+        created_at: new Date().toISOString()
+    };
+    if (!row.name) { toast('名称不能为空','error'); return; }
+    let err;
+    if (id) {
+        ({ error: err } = await supabase.from('cwm_materials').update(row).eq('id', id));
+    } else {
+        row.material_id = genId('MT');
+        ({ error: err } = await supabase.from('cwm_materials').insert(row));
+    }
+    if (err) { toast('保存失败','error'); return; }
+    toast('保存成功','success'); closeModal(); loadMaterials();
+}
+
+async function delMaterial(id) {
+    if (!confirm('确定删除？')) return;
+    await supabase.from('cwm_materials').delete().eq('id', id);
+    toast('删除成功','success'); loadMaterials();
+}
+
+// ==================== 入库 ====================
+async function loadInventory() {
+    const proj = getUserProject();
+    const { data } = await supabase.from('cwm_inventory').select('*').order('created_at',{ascending:false}).limit(200);
+    let filtered = data||[];
+    if (proj) filtered = filtered.filter(r => r.project===proj);
+    
+    // 材料筛选
+    const { data: mats } = await supabase.from('cwm_materials').select('name');
+    document.getElementById('invMatFilter').innerHTML = '<option value="">全部材料</option>' + 
+        (mats||[]).map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+    
+    document.getElementById('inventoryTable').innerHTML = filtered.map(r => `
+        <tr>
+            <td>${r.inventory_id||'-'}</td><td>${r.date||'-'}</td><td>${r.material_name||'-'}</td>
+            <td class="num">${r.quantity||0} ${r.unit||''}</td>
+            <td class="num">¥${fmtMoney(r.price)}</td>
+            <td class="num">¥${fmtMoney(r.total)}</td>
+            <td>${r.supplier||'-'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editInventory('${r.id}')">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="delInventory('${r.id}')">删除</button>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:#999">暂无数据</td></tr>';
+}
+
+function openInventoryModal(id) {
+    const title = id ? '编辑入库' : '新增入库';
+    const today = new Date().toISOString().slice(0,10);
+    openModal(title, `
+        <input type="hidden" id="i-id" value="${id||''}">
+        <div class="form-row">
+            <div class="form-group"><label>日期</label><input id="i-date" type="date" value="${today}"></div>
+            <div class="form-group"><label>材料名称 *</label><input id="i-mname" placeholder="选择或输入材料名" list="invMatList" required></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>数量</label><input id="i-qty" type="number" placeholder="0" oninput="calcITotal()"></div>
+            <div class="form-group"><label>单价</label><input id="i-price" type="number" step="0.01" placeholder="0" oninput="calcITotal()"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>合计</label><input id="i-total" type="number" step="0.01" placeholder="自动计算"></div>
+            <div class="form-group"><label>供应商</label><input id="i-supplier" placeholder="供应商名称"></div>
+        </div>
+        <div class="form-group"><label>备注</label><textarea id="i-remark" placeholder="备注"></textarea></div>
+        <datalist id="invMatList"></datalist>
+    `);
+    supabase.from('cwm_materials').select('name,unit,price').then(({data}) => {
+        document.getElementById('invMatList').innerHTML = (data||[]).map(m => `<option value="${m.name} [${m.unit||''}] ¥${m.price||0}">`).join('');
+    });
+    if (id) {
+        supabase.from('cwm_inventory').select('*').eq('id',id).single().then(({data:r}) => {
+            if (r) {
+                ['i-id','i-date','i-mname','i-qty','i-price','i-total','i-supplier','i-remark'].forEach(k => {
+                    const el = document.getElementById(k);
+                    if (el) el.value = r[k.replace('i-','')] || el.value;
+                });
+            }
+        });
+    }
+}
+
+function calcITotal() {
+    const q = Number(document.getElementById('i-qty').value)||0;
+    const p = Number(document.getElementById('i-price').value)||0;
+    document.getElementById('i-total').value = (q*p).toFixed(2);
+}
+
+async function saveInventory() {
+    const id = document.getElementById('i-id').value;
+    const row = {
+        date: document.getElementById('i-date').value,
+        material_name: document.getElementById('i-mname').value.split('[')[0].trim(),
+        quantity: Number(document.getElementById('i-qty').value)||0,
+        price: Number(document.getElementById('i-price').value)||0,
+        total: Number(document.getElementById('i-total').value)||0,
+        supplier: document.getElementById('i-supplier').value,
+        remark: document.getElementById('i-remark').value,
+        project: getUserProject(),
+        operator: currentUser.name || currentUser.username,
+        created_at: new Date().toISOString()
+    };
+    if (!row.material_name) { toast('材料名称不能为空','error'); return; }
+    let err;
+    if (id) {
+        ({ error: err } = await supabase.from('cwm_inventory').update(row).eq('id', id));
+    } else {
+        row.inventory_id = genId('IN');
+        ({ error: err } = await supabase.from('cwm_inventory').insert(row));
+    }
+    if (err) { toast('保存失败','error'); return; }
+    toast('保存成功','success'); closeModal(); loadInventory();
+}
+
+async function delInventory(id) {
+    if (!confirm('确定删除？')) return;
+    await supabase.from('cwm_inventory').delete().eq('id', id);
+    toast('删除成功','success'); loadInventory();
+}
+
+// ==================== 出库 ====================
+async function loadOutbound() {
+    const proj = getUserProject();
+    const { data } = await supabase.from('cwm_outbound').select('*').order('created_at',{ascending:false}).limit(200);
+    let filtered = data||[];
+    if (proj) filtered = filtered.filter(r => r.project===proj);
+    
+    document.getElementById('outboundTable').innerHTML = filtered.map(r => `
+        <tr>
+            <td>${r.outbound_id||'-'}</td><td>${r.date||'-'}</td><td>${r.material_name||'-'}</td>
+            <td class="num">${r.quantity||0} ${r.unit||''}</td><td>${r.unit||'-'}</td><td>${r.purpose||'-'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editOutbound('${r.id}')">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="delOutbound('${r.id}')">删除</button>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:#999">暂无数据</td></tr>';
+}
+
+function openOutboundModal(id) {
+    const title = id ? '编辑出库' : '新增出库';
+    const today = new Date().toISOString().slice(0,10);
+    openModal(title, `
+        <input type="hidden" id="o-id" value="${id||''}">
+        <div class="form-row">
+            <div class="form-group"><label>日期</label><input id="o-date" type="date" value="${today}"></div>
+            <div class="form-group"><label>材料名称 *</label><input id="o-mname" placeholder="材料名" list="outMatList" required></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>数量</label><input id="o-qty" type="number" placeholder="0"></div>
+            <div class="form-group"><label>单位</label><input id="o-unit" placeholder="如：平方米"></div>
+        </div>
+        <div class="form-group"><label>用途</label><textarea id="o-purpose" placeholder="用于何处"></textarea></div>
+        <datalist id="outMatList"></datalist>
+    `);
+    supabase.from('cwm_materials').select('name,unit').then(({data}) => {
+        document.getElementById('outMatList').innerHTML = (data||[]).map(m => `<option value="${m.name}">`).join('');
+    });
+    if (id) {
+        supabase.from('cwm_outbound').select('*').eq('id',id).single().then(({data:r}) => {
+            if (r) {
+                ['o-id','o-date','o-mname','o-qty','o-unit','o-purpose'].forEach(k => {
+                    const el = document.getElementById(k);
+                    if (el) el.value = r[k.replace('o-','')] || el.value;
+                });
+            }
+        });
+    }
+}
+
+async function saveOutbound() {
+    const id = document.getElementById('o-id').value;
+    const row = {
+        date: document.getElementById('o-date').value,
+        material_name: document.getElementById('o-mname').value,
+        quantity: Number(document.getElementById('o-qty').value)||0,
+        unit: document.getElementById('o-unit').value,
+        purpose: document.getElementById('o-purpose').value,
+        project: getUserProject(),
+        operator: currentUser.name || currentUser.username,
+        created_at: new Date().toISOString()
+    };
+    if (!row.material_name) { toast('材料名称不能为空','error'); return; }
+    let err;
+    if (id) {
+        ({ error: err } = await supabase.from('cwm_outbound').update(row).eq('id', id));
+    } else {
+        row.outbound_id = genId('OUT');
+        ({ error: err } = await supabase.from('cwm_outbound').insert(row));
+    }
+    if (err) { toast('保存失败','error'); return; }
+    toast('保存成功','success'); closeModal(); loadOutbound();
+}
+
+async function delOutbound(id) {
+    if (!confirm('确定删除？')) return;
+    await supabase.from('cwm_outbound').delete().eq('id', id);
+    toast('删除成功','success'); loadOutbound();
+}
+
+// ==================== 收入 ====================
+async function loadIncome() {
+    const proj = getUserProject();
+    const month = document.getElementById('incMonth').value || new Date().toISOString().slice(0,7);
+    let q = supabase.from('cwm_income').select('*');
+    if (proj) q = q.eq('project', proj);
+    const { data } = await q;
+    let filtered = (data||[]).filter(r => r.date && r.date.startsWith(month));
+    document.getElementById('incomeTable').innerHTML = filtered.map(r => `
+        <tr>
+            <td>${r.date||'-'}</td><td>${r.title||'-'}</td><td>${r.type||'-'}</td>
+            <td class="num positive">+¥${fmtMoney(r.amount)}</td><td>${r.remark||'-'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editIncome('${r.id}')">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="delIncome('${r.id}')">删除</button>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#999">暂无数据</td></tr>';
+}
+
+function openIncomeModal(id) {
+    const title = id ? '编辑收入' : '新增收入';
+    const today = new Date().toISOString().slice(0,10);
+    openModal(title, `
+        <input type="hidden" id="inc-id" value="${id||''}">
+        <div class="form-row">
+            <div class="form-group"><label>日期</label><input id="inc-date" type="date" value="${today}"></div>
+            <div class="form-group"><label>标题</label><input id="inc-title" placeholder="收入标题"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>类型</label><select id="inc-type"><option value="工程款">工程款</option><option value="其他收入">其他收入</option></select></div>
+            <div class="form-group"><label>金额</label><input id="inc-amount" type="number" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="form-group"><label>备注</label><textarea id="inc-remark" placeholder="备注"></textarea></div>
+    `);
+    if (id) {
+        supabase.from('cwm_income').select('*').eq('id',id).single().then(({data:r}) => {
+            if (r) {
+                ['inc-id','inc-date','inc-title','inc-type','inc-amount','inc-remark'].forEach(k => {
+                    const el = document.getElementById(k);
+                    if (el) el.value = r[k.replace('inc-','')] || '';
+                });
+            }
+        });
+    }
+}
+
+async function saveIncome() {
+    const id = document.getElementById('inc-id').value;
+    const row = {
+        date: document.getElementById('inc-date').value,
+        title: document.getElementById('inc-title').value,
+        type: document.getElementById('inc-type').value,
+        amount: Number(document.getElementById('inc-amount').value)||0,
+        remark: document.getElementById('inc-remark').value,
+        project: getUserProject(),
+        operator: currentUser.name || currentUser.username,
+        created_at: new Date().toISOString()
+    };
+    let err;
+    if (id) {
+        ({ error: err } = await supabase.from('cwm_income').update(row).eq('id', id));
+    } else {
+        row.income_id = genId('INC');
+        ({ error: err } = await supabase.from('cwm_income').insert(row));
+    }
+    if (err) { toast('保存失败','error'); return; }
+    toast('保存成功','success'); closeModal(); loadIncome();
+}
+
+async function delIncome(id) {
+    if (!confirm('确定删除？')) return;
+    await supabase.from('cwm_income').delete().eq('id', id);
+    toast('删除成功','success'); loadIncome();
+}
+
+// ==================== 支出 ====================
+async function loadExpense() {
+    const proj = getUserProject();
+    const month = document.getElementById('expMonth').value || new Date().toISOString().slice(0,7);
+    const typeF = document.getElementById('expTypeFilter').value;
+    let q = supabase.from('cwm_expense').select('*');
+    if (proj) q = q.eq('project', proj);
+    const { data } = await q;
+    let filtered = (data||[]).filter(r => r.date && r.date.startsWith(month));
+    if (typeF) filtered = filtered.filter(r => r.type === typeF);
+    document.getElementById('expenseTable').innerHTML = filtered.map(r => `
+        <tr>
+            <td>${r.date||'-'}</td><td>${r.title||'-'}</td><td>${r.type||'-'}</td>
+            <td class="num negative">-¥${fmtMoney(r.amount)}</td><td>${r.remark||'-'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editExpense('${r.id}')">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="delExpense('${r.id}')">删除</button>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#999">暂无数据</td></tr>';
+}
+
+function openExpenseModal(id) {
+    const title = id ? '编辑支出' : '新增支出';
+    const today = new Date().toISOString().slice(0,10);
+    openModal(title, `
+        <input type="hidden" id="exp-id" value="${id||''}">
+        <div class="form-row">
+            <div class="form-group"><label>日期</label><input id="exp-date" type="date" value="${today}"></div>
+            <div class="form-group"><label>标题</label><input id="exp-title" placeholder="支出标题"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>类型</label><select id="exp-type"><option value="材料款">材料款</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="管理费">管理费</option><option value="其他">其他</option></select></div>
+            <div class="form-group"><label>金额</label><input id="exp-amount" type="number" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="form-group"><label>备注</label><textarea id="exp-remark" placeholder="备注"></textarea></div>
+    `);
+    if (id) {
+        supabase.from('cwm_expense').select('*').eq('id',id).single().then(({data:r}) => {
+            if (r) {
+                ['exp-id','exp-date','exp-title','exp-type','exp-amount','exp-remark'].forEach(k => {
+                    const el = document.getElementById(k);
+                    if (el) el.value = r[k.replace('exp-','')] || '';
+                });
+            }
+        });
+    }
+}
+
+async function saveExpense() {
+    const id = document.getElementById('exp-id').value;
+    const row = {
+        date: document.getElementById('exp-date').value,
+        title: document.getElementById('exp-title').value,
+        type: document.getElementById('exp-type').value,
+        amount: Number(document.getElementById('exp-amount').value)||0,
+        remark: document.getElementById('exp-remark').value,
+        project: getUserProject(),
+        operator: currentUser.name || currentUser.username,
+        created_at: new Date().toISOString()
+    };
+    let err;
+    if (id) {
+        ({ error: err } = await supabase.from('cwm_expense').update(row).eq('id', id));
+    } else {
+        row.expense_id = genId('EXP');
+        ({ error: err } = await supabase.from('cwm_expense').insert(row));
+    }
+    if (err) { toast('保存失败','error'); return; }
+    toast('保存成功','success'); closeModal(); loadExpense();
+}
+
+async function delExpense(id) {
+    if (!confirm('确定删除？')) return;
+    await supabase.from('cwm_expense').delete().eq('id', id);
+    toast('删除成功','success'); loadExpense();
+}
+
+// ==================== 审批 ====================
+async function loadApprovals() {
+    const proj = getUserProject();
+    const typeF = document.getElementById('apprTypeFilter').value;
+    const statusF = document.getElementById('apprStatusFilter').value;
+    let q = supabase.from('cwm_approvals').select('*').order('created_at',{ascending:false}).limit(200);
+    if (proj) q = q.eq('project', proj);
+    const { data } = await q;
+    let filtered = data||[];
+    if (typeF) filtered = filtered.filter(r => r.type === typeF);
+    if (statusF) filtered = filtered.filter(r => r.status === statusF);
+    document.getElementById('approvalsTable').innerHTML = filtered.map(r => `
+        <tr>
+            <td>${r.approval_id||'-'}</td><td>${r.type||'-'}</td><td>${r.title||'-'}</td>
+            <td class="num">¥${fmtMoney(r.amount)}</td><td>${r.applicant||'-'}</td>
+            <td><span class="status-tag ${r.status==='已通过'?'status-active':r.status==='已拒绝'?'status-rejected':'status-pending'}">${r.status||'-'}</span></td>
+            <td>${formatDate(r.created_at)}</td>
+            <td>
+                ${r.status==='待审批'&&(currentUser.role==='manager'||currentUser.role==='approver')?`<button class="btn btn-sm btn-success" onclick="approveOne('${r.id}','已通过')">通过</button> <button class="btn btn-sm btn-danger" onclick="approveOne('${r.id}','已拒绝')">拒绝</button>`:''}
+                <button class="btn btn-sm btn-outline" onclick="editApproval('${r.id}')">详情</button>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:#999">暂无数据</td></tr>';
+}
+
+function openApprovalModal(id) {
+    const title = id ? '审批详情' : '新建申请';
+    openModal(title, `
+        <input type="hidden" id="appr-id" value="${id||''}">
+        <div class="form-row">
+            <div class="form-group"><label>申请类型</label><select id="appr-type" ${id?'disabled':''}><option>采购申请</option><option>合同申请</option><option>付款申请</option><option>报销申请</option><option>备用金借支</option></select></div>
+            <div class="form-group"><label>标题</label><input id="appr-title" placeholder="申请标题"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>金额</label><input id="appr-amount" type="number" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="form-group"><label>申请说明</label><textarea id="appr-content" placeholder="详细说明"></textarea></div>
+    `, '600px');
+    if (id) {
+        supabase.from('cwm_approvals').select('*').eq('id',id).single().then(({data:r}) => {
+            if (r) {
+                ['appr-id','appr-type','appr-title','appr-amount','appr-content'].forEach(k => {
+                    const el = document.getElementById(k);
+                    if (el) el.value = r[k.replace('appr-','')] || '';
+                });
+            }
+        });
+    }
+}
+
+async function saveApproval() {
+    const row = {
+        approval_id: genId('APR'),
+        type: document.getElementById('appr-type').value,
+        title: document.getElementById('appr-title').value,
+        amount: Number(document.getElementById('appr-amount').value)||0,
+        content: document.getElementById('appr-content').value,
+        status: '待审批',
+        step: 1,
+        applicant: currentUser.name || currentUser.username,
+        project: getUserProject(),
+        created_at: new Date().toISOString()
+    };
+    const { error } = await supabase.from('cwm_approvals').insert(row);
+    if (error) { toast('提交失败','error'); return; }
+    toast('申请已提交','success'); closeModal(); loadApprovals();
+}
+
+async function approveOne(id, status) {
+    const { error } = await supabase.from('cwm_approvals').update({
+        status,
+        approver: currentUser.name || currentUser.username,
+        approve_time: new Date().toISOString()
+    }).eq('id', id);
+    if (error) { toast('操作失败','error'); return; }
+    toast(`已${status==='已通过'?'通过':'拒绝'}`,'success'); loadApprovals();
+}
+
+// ==================== 账号 ====================
+async function loadAccounts() {
+    const { data } = await supabase.from('cwm_users').select('*').order('created_at',{ascending:false});
+    document.getElementById('accountsTable').innerHTML = (data||[]).map(r => `
+        <tr>
+            <td>${r.username||'-'}</td><td>${r.name||'-'}</td>
+            <td>${ROLE_NAMES[r.role]||r.role||'-'}</td><td>${r.phone||'-'}</td>
+            <td><span class="status-tag ${r.status==='active'?'status-active':'status-rejected'}">${r.status==='active'?'正常':'禁用'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editAccount('${r.id}')">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="delAccount('${r.id}')">删除</button>
+            </td>
+        </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#999">暂无数据</td></tr>';
+}
+
+function openAccountModal(id) {
+    const title = id ? '编辑账号' : '新增账号';
+    openModal(title, `
+        <input type="hidden" id="u-id" value="${id||''}">
+        <div class="form-row">
+            <div class="form-group"><label>用户名 *</label><input id="u-user" placeholder="登录用户名" ${id?'readonly':''} style="${id?'background:#eee':''}"></div>
+            ${!id?'<div class="form-group"><label>密码 *</label><input id="u-pass" placeholder="登录密码" type="password"></div>':''}
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>姓名</label><input id="u-name" placeholder="真实姓名"></div>
+            <div class="form-group"><label>角色</label><select id="u-role"><option value="manager">项目经理</option><option value="finance">财务</option><option value="warehouse">仓管员</option><option value="labor">劳务员</option><option value="purchaser">采购员</option><option value="approver">审批员</option></select></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>手机</label><input id="u-phone" placeholder="手机号"></div>
+            <div class="form-group"><label>所属项目</label><input id="u-project" placeholder="ALL表示全部项目"></div>
+        </div>
+    `);
+    if (id) {
+        supabase.from('cwm_users').select('*').eq('id',id).single().then(({data:r}) => {
+            if (r) {
+                ['u-id','u-user','u-name','u-role','u-phone','u-project'].forEach(k => {
+                    const el = document.getElementById(k);
+                    if (el) el.value = r[k.replace('u-','')] || '';
+                });
+            }
+        });
+    }
+}
+
+async function saveAccount() {
+    const id = document.getElementById('u-id').value;
+    const row = {
+        username: document.getElementById('u-user').value,
+        name: document.getElementById('u-name').value,
+        role: document.getElementById('u-role').value,
+        phone: document.getElementById('u-phone').value,
+        project: document.getElementById('u-project').value || 'ALL',
+        status: 'active',
+        created_at: new Date().toISOString()
+    };
+    if (!row.username) { toast('用户名不能为空','error'); return; }
+    if (!id) {
+        row.password = document.getElementById('u-pass').value;
+        if (!row.password) { toast('密码不能为空','error'); return; }
+    }
+    let err;
+    if (id) {
+        ({ error: err } = await supabase.from('cwm_users').update(row).eq('id', id));
+    } else {
+        ({ error: err } = await supabase.from('cwm_users').insert(row));
+    }
+    if (err) { toast('保存失败: '+err.message,'error'); return; }
+    toast('保存成功','success'); closeModal(); loadAccounts();
+}
+
+async function delAccount(id) {
+    if (!confirm('确定删除该账号？')) return;
+    const { error } = await supabase.from('cwm_users').delete().eq('id', id);
+    if (error) { toast('删除失败','error'); return; }
+    toast('删除成功','success'); loadAccounts();
+}
+
+// ==================== 辅助编辑函数 ====================
+async function editProject(id) { openProjectModal(id); }
+async function editStaff(id) { openStaffModal(id); }
+async function editAttendance(id) { openAttendanceModal(id); }
+async function editMaterial(id) { openMaterialModal(id); }
+async function editInventory(id) { openInventoryModal(id); }
+async function editOutbound(id) { openOutboundModal(id); }
+async function editIncome(id) { openIncomeModal(id); }
+async function editExpense(id) { openExpenseModal(id); }
+async function editApproval(id) { openApprovalModal(id); }
+async function editAccount(id) { openAccountModal(id); }
+
+// ==================== 清空数据 ====================
+async function clearAllData() {
+    if (!confirm('⚠️ 确定清空所有云端数据？此操作不可恢复！')) return;
+    if (!confirm('再次确认：清空后所有数据将永久删除！')) return;
+    const tables = ['cwm_approvals','cwm_expense','cwm_income','cwm_outbound','cwm_inventory','cwm_materials','cwm_attendance','cwm_staff','cwm_projects'];
+    for (const t of tables) {
+        await supabase.from(t).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+    toast('云端数据已清空','info');
+}
+
+// ==================== 启动 ====================
+// 覆盖模态框保存按钮（需要动态设置正确的保存函数）
+const _origOpenModal = openModal;
+openModal = function(title, body, w) {
+    _origOpenModal(title, body, w);
+    // 追加通用保存/取消按钮
+    const footer = document.createElement('div');
+    footer.className = 'modal-footer';
+    footer.id = 'modalFooter';
+    document.getElementById('modalBody').appendChild(footer);
+};
+
+// 监听模态框内容变化，自动挂载按钮
+const observer = new MutationObserver(() => {
+    const body = document.getElementById('modalBody');
+    if (!body) return;
+    const footer = document.getElementById('modalFooter');
+    if (!footer) return;
+    if (footer.children.length > 0) return; // 已添加
+    const title = document.getElementById('modalTitle').textContent;
+    let saveFn = 'saveProject()';
+    if (title.includes('人员')) saveFn = 'saveStaff()';
+    else if (title.includes('考勤') && !title.includes('批量')) saveFn = 'saveAttendance()';
+    else if (title.includes('材料')) saveFn = 'saveMaterial()';
+    else if (title.includes('入库')) saveFn = 'saveInventory()';
+    else if (title.includes('出库')) saveFn = 'saveOutbound()';
+    else if (title.includes('收入')) saveFn = 'saveIncome()';
+    else if (title.includes('支出')) saveFn = 'saveExpense()';
+    else if (title.includes('申请') || title.includes('审批')) saveFn = title.includes('详情') ? 'closeModal()' : 'saveApproval()';
+    else if (title.includes('账号')) saveFn = 'saveAccount()';
+    else if (title.includes('批量')) saveFn = 'saveBatchAttendance()';
+    
+    footer.innerHTML = `<button class="btn btn-primary" onclick="${saveFn}">💾 保存</button><button class="btn btn-outline" onclick="closeModal()">取消</button>`;
+});
+
+observer.observe(document.getElementById('modalBody') || document.body, { childList: true, subtree: true });
+
+// 自动登录检查
+window.addEventListener('DOMContentLoaded', () => {
+    const saved = sessionStorage.getItem('cwm_user');
+    if (saved) {
+        currentUser = JSON.parse(saved);
+        document.getElementById('loginPage').style.display = 'none';
+        showApp();
+    } else {
+        document.getElementById('loading').style.display = 'none';
+    }
+});
+</script>
+</body>
+</html>
