@@ -13,6 +13,151 @@
     <!-- Supabase数据库配置 -->
     <script src="supabase-config.js"></script>
     
+    <!-- WebDAV配置 -->
+    <script src="webdav-config.js"></script>
+    
+    <!-- WebDAV客户端模块 -->
+    <script>
+    // WebDAV 数据库管理器
+    const WebDAVDB = {
+        initialized: false,
+        syncing: false,
+        lastSyncTime: null,
+        
+        // 初始化
+        async init() {
+            try {
+                console.log('【WebDAV同步】正在初始化...');
+                // 测试连接 - 先检查目录是否存在
+                const exists = await this.checkPath(WEBDAV_CONFIG.dataPath);
+                if (!exists) {
+                    // 创建数据目录
+                    await this.createPath(WEBDAV_CONFIG.dataPath);
+                }
+                this.initialized = true;
+                console.log('【WebDAV同步】初始化成功！');
+                return true;
+            } catch (e) {
+                console.error('【WebDAV同步】初始化失败:', e);
+                return false;
+            }
+        },
+        
+        // 检查路径是否存在
+        async checkPath(path) {
+            return new Promise((resolve) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('PROPFIND', WEBDAV_CONFIG.server + path, false);
+                xhr.setRequestHeader('Authorization', 'Basic ' + btoa(WEBDAV_CONFIG.username + ':' + WEBDAV_CONFIG.password));
+                xhr.send();
+                resolve(xhr.status === 207 || xhr.status === 200);
+            });
+        },
+        
+        // 创建目录
+        async createPath(path) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('MKCOL', WEBDAV_CONFIG.server + path, true);
+                xhr.setRequestHeader('Authorization', 'Basic ' + btoa(WEBDAV_CONFIG.username + ':' + WEBDAV_CONFIG.password));
+                xhr.onload = () => resolve();
+                xhr.onerror = () => resolve(); // 忽略错误
+                xhr.send();
+            });
+        },
+        
+        // 从WebDAV下载数据
+        async pullData() {
+            if (!this.initialized) await this.init();
+            
+            try {
+                console.log('【WebDAV同步】正在从云端拉取数据...');
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', WEBDAV_CONFIG.server + WEBDAV_FULL_PATH, true);
+                xhr.setRequestHeader('Authorization', 'Basic ' + btoa(WEBDAV_CONFIG.username + ':' + WEBDAV_CONFIG.password));
+                
+                return new Promise((resolve, reject) => {
+                    xhr.onload = () => {
+                        if (xhr.status === 200) {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
+                                saveDB(data);
+                                this.lastSyncTime = new Date();
+                                console.log('【WebDAV同步】拉取成功！');
+                                resolve(data);
+                            } catch(e) {
+                                console.error('【WebDAV同步】解析数据失败:', e);
+                                resolve(null);
+                            }
+                        } else {
+                            console.log('【WebDAV同步】云端暂无数据');
+                            resolve(null);
+                        }
+                    };
+                    xhr.onerror = () => {
+                        console.error('【WebDAV同步】拉取失败');
+                        resolve(null);
+                    };
+                    xhr.send();
+                });
+            } catch (e) {
+                console.error('【WebDAV同步】拉取异常:', e);
+                return null;
+            }
+        },
+        
+        // 上传数据到WebDAV
+        async pushData() {
+            if (!this.initialized) await this.init();
+            if (this.syncing) return false;
+            
+            this.syncing = true;
+            try {
+                console.log('【WebDAV同步】正在上传数据到云端...');
+                const db = getDB();
+                const jsonStr = JSON.stringify(db, null, 2);
+                
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', WEBDAV_CONFIG.server + WEBDAV_FULL_PATH, true);
+                xhr.setRequestHeader('Authorization', 'Basic ' + btoa(WEBDAV_CONFIG.username + ':' + WEBDAV_CONFIG.password));
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                
+                return new Promise((resolve) => {
+                    xhr.onload = () => {
+                        if (xhr.status === 200 || xhr.status === 201 || xhr.status === 204) {
+                            this.lastSyncTime = new Date();
+                            console.log('【WebDAV同步】上传成功！');
+                            resolve(true);
+                        } else {
+                            console.error('【WebDAV同步】上传失败:', xhr.status);
+                            resolve(false);
+                        }
+                    };
+                    xhr.onerror = () => {
+                        console.error('【WebDAV同步】上传失败');
+                        resolve(false);
+                    };
+                    xhr.send(jsonStr);
+                });
+            } catch (e) {
+                console.error('【WebDAV同步】上传异常:', e);
+                return false;
+            } finally {
+                this.syncing = false;
+            }
+        },
+        
+        // 获取状态
+        getStatus() {
+            if (this.syncing) return '同步中...';
+            if (this.lastSyncTime) {
+                return '已同步 ' + this.lastSyncTime.toLocaleTimeString();
+            }
+            return '已连接';
+        }
+    };
+    </script>
+    
     <!-- 云数据库同步模块 -->
     <script>
     // Supabase 数据库管理器
@@ -137,6 +282,7 @@
     // 页面加载时初始化云数据库
     window.addEventListener('DOMContentLoaded', async () => {
         await CloudDB.init();
+        await WebDAVDB.init();
     });
     </script>
     
@@ -2687,6 +2833,37 @@
         }
     }
     
+    // WebDAV下载
+    async function webdavPull() {
+        var el = document.getElementById('cloudSyncStatus');
+        if (el) el.textContent = '📂 正在连接WebDAV...';
+        
+        var data = await WebDAVDB.pullData();
+        if (data) {
+            if (el) el.textContent = '✅ WebDAV数据已同步到本地';
+            alert('WebDAV数据同步成功！页面将刷新...');
+            location.reload();
+        } else {
+            if (el) el.textContent = '❌ WebDAV数据同步失败';
+            alert('WebDAV数据同步失败，请检查网络连接或云端是否有数据。');
+        }
+    }
+    
+    // WebDAV上传
+    async function webdavPush() {
+        var el = document.getElementById('cloudSyncStatus');
+        if (el) el.textContent = '📂 正在上传到WebDAV...';
+        
+        var success = await WebDAVDB.pushData();
+        if (success) {
+            if (el) el.textContent = '✅ 数据已上传到WebDAV';
+            alert('数据已成功上传到WebDAV！其他设备现在可以同步。');
+        } else {
+            if (el) el.textContent = '❌ WebDAV上传失败';
+            alert('WebDAV上传失败，请检查网络连接。');
+        }
+    }
+    
     // 自动尝试云端同步（登录后）
     async function autoCloudSync() {
         if (!CLOUDBASE_CONFIG.enableCloud) return;
@@ -2844,9 +3021,11 @@
         
         // 云端同步按钮固定在底部
         var syncDiv = document.createElement('div');
-        syncDiv.style.cssText = 'padding:12px 16px;border-top:1px solid rgba(255,255,255,0.1);flex-shrink:0;display:flex;gap:8px;';
-        syncDiv.innerHTML = '<button onclick="syncFromCloud()" style="flex:1;background:rgba(39,174,96,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 8px;border-radius:8px;cursor:pointer;font-size:12px;">☁️ 从云端同步</button>' +
-                          '<button onclick="syncToCloud()" style="flex:1;background:rgba(230,126,34,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 8px;border-radius:8px;cursor:pointer;font-size:12px;">☁️ 上传至云端</button>';
+        syncDiv.style.cssText = 'padding:12px 16px;border-top:1px solid rgba(255,255,255,0.1);flex-shrink:0;display:flex;flex-wrap:wrap;gap:6px;';
+        syncDiv.innerHTML = '<button onclick="syncFromCloud()" style="flex:1;min-width:45%;background:rgba(39,174,96,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 6px;border-radius:8px;cursor:pointer;font-size:11px;">☁️ Supabase同步</button>' +
+                          '<button onclick="syncToCloud()" style="flex:1;min-width:45%;background:rgba(230,126,34,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 6px;border-radius:8px;cursor:pointer;font-size:11px;">☁️ Supabase上传</button>' +
+                          '<button onclick="webdavPull()" style="flex:1;min-width:45%;background:rgba(52,152,219,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 6px;border-radius:8px;cursor:pointer;font-size:11px;">📂 WebDAV下载</button>' +
+                          '<button onclick="webdavPush()" style="flex:1;min-width:45%;background:rgba(155,89,182,0.3);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 6px;border-radius:8px;cursor:pointer;font-size:11px;">📂 WebDAV上传</button>';
         sidebar.appendChild(syncDiv);
         
         // 同步状态提示
